@@ -8,6 +8,7 @@
     "server": "node backend/server.js",
     "hardware": "node backend/hardware/hardware-server.js",
     "build": "tsc -b && vite build",
+    "build:render": "npm install && cd backend && npm install && cd .. && npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
