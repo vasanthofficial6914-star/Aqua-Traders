@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { HARDWARE_WS_URL } from '../config';
 
 interface HardwareData {
     weight: number;
@@ -18,7 +19,7 @@ export const useHardwareData = () => {
     const connect = () => {
         if (hasUnmounted.current) return;
 
-        const wsUrl = 'ws://localhost:5001/hardware';
+        const wsUrl = HARDWARE_WS_URL;
 
         if (socketRef.current) {
             if (socketRef.current.readyState === WebSocket.CONNECTING || socketRef.current.readyState === WebSocket.OPEN) {

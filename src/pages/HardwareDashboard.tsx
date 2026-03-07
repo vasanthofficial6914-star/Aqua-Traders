@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useHardwareWeight } from '../hooks/useHardwareWeight';
+import { HARDWARE_WS_URL } from '../config';
 import { Scale, Thermometer, Droplets, Clock, AlertTriangle, ShieldCheck, ArrowLeft, BellRing } from 'lucide-react';
 
 const HardwareDashboard: React.FC = () => {
@@ -212,7 +213,7 @@ const HardwareDashboard: React.FC = () => {
                             <p className="text-red-500 font-bold">{`> [ALERT] ${alertMessage.replace('⚠ ', '')} detected`}</p>
                         )}
                         {isOffline && <p className="text-red-400/80">{`> [ERROR] No active stream detected...`}</p>}
-                        <p>{`> Listening on ws://localhost:5001/hardware...`}</p>
+                        <p>{`> Listening on ${HARDWARE_WS_URL}...`}</p>
                     </div>
                 </div>
             </div>
