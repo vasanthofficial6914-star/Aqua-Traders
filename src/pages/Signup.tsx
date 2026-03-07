@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import API_BASE_URL from '../config/api';
-
-
+import { signupUser } from '../services/authService';
 
 const Signup: React.FC = () => {
     const [name, setName] = useState('');
@@ -26,7 +24,6 @@ const Signup: React.FC = () => {
             else if (authRole === 'admin') navigate('/admindashboard');
         }
     }, [isAuthenticated, authRole, navigate]);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -43,25 +40,11 @@ const Signup: React.FC = () => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ name, email, phone, password, role }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // Successful signup redirects to login
-                navigate('/');
-            } else {
-                setError(data.message || 'Signup failed. Please try again.');
-            }
-        } catch (err) {
-            console.error(err);
-            setError('Could not connect to the server. Please try again later.');
+            await signupUser({ name, email, phone, password, role });
+            // Successful signup redirects to login
+            navigate('/');
+        } catch (err: any) {
+            setError(err.message || 'Could not connect to the server. Please try again later.');
         } finally {
             setLoading(false);
         }

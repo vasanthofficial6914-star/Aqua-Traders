@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import API_BASE_URL from '../config/api';
-
-
+import { loginUser } from '../services/authService';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -22,7 +20,6 @@ const Login: React.FC = () => {
             else if (role === 'admin') navigate('/admindashboard');
         }
     }, [isAuthenticated, role, navigate]);
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -34,35 +31,22 @@ const Login: React.FC = () => {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
+            const data = await loginUser({ email, password });
 
-            const data = await response.json();
+            // Assuming data contains token and user body:
+            login(data, data.token);
 
-            if (response.ok) {
-                // Assuming data contains token and user body:
-                login(data, data.token);
-
-                // Redirect based on role returned from DB
-                const userRole = data.role;
-                if (userRole === 'buyer' || userRole === 'customer') {
-                    navigate('/customerdashboard');
-                } else if (userRole === 'fisherman') {
-                    navigate('/fishermandashboard');
-                } else if (userRole === 'admin') {
-                    navigate('/admindashboard');
-                }
-            } else {
-                setError(data.message || 'Login failed. Please check credentials.');
+            // Redirect based on role returned from DB
+            const userRole = data.role;
+            if (userRole === 'buyer' || userRole === 'customer') {
+                navigate('/customerdashboard');
+            } else if (userRole === 'fisherman') {
+                navigate('/fishermandashboard');
+            } else if (userRole === 'admin') {
+                navigate('/admindashboard');
             }
-        } catch (err) {
-            console.error(err);
-            setError('Could not connect to the server. Please try again later.');
+        } catch (err: any) {
+            setError(err.message || 'Could not connect to the server. Please try again later.');
         } finally {
             setLoading(false);
         }
