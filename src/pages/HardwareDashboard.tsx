@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useHardwareData } from '../hooks/useHardwareData';
+import { useHardwareWeight } from '../hooks/useHardwareWeight';
 import { Scale, Thermometer, Droplets, Clock, AlertTriangle, ShieldCheck, ArrowLeft, BellRing } from 'lucide-react';
 
 const HardwareDashboard: React.FC = () => {
-    const { data, isOffline } = useHardwareData();
+    const { data, isOffline } = useHardwareWeight();
     const navigate = useNavigate();
 
     // Alert States
@@ -16,41 +16,21 @@ const HardwareDashboard: React.FC = () => {
     });
 
     // 1. Audio System Setup
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const audioRef = useRef(new Audio("/alert-beep.mp3"));
 
+    // 2. Fix browser autoplay restriction
     useEffect(() => {
-        // Initialize the audio object
-        audioRef.current = new Audio('/alert-beep.mp3');
-
-        // Browser Autoplay Fix: Prime the audio on first interaction
-        const primeAudio = () => {
-            if (audioRef.current) {
-                audioRef.current.play()
-                    .then(() => {
-                        audioRef.current?.pause();
-                        if (audioRef.current) audioRef.current.currentTime = 0;
-                        console.log("Audio system primed and ready.");
-                    })
-                    .catch(() => {
-                        // Silent catch - will happen if still not allowed
-                    });
-            }
-            document.removeEventListener('click', primeAudio);
+        const unlockAudio = () => {
+            audioRef.current.play().then(() => {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            }).catch(err => console.log("Audio unlock failed:", err));
         };
-        document.addEventListener('click', primeAudio);
-        return () => document.removeEventListener('click', primeAudio);
+        document.addEventListener("click", unlockAudio, { once: true });
+        return () => document.removeEventListener("click", unlockAudio);
     }, []);
 
-    const playAlertSound = () => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(err => {
-                console.error("Alert sound failed to play:", err);
-            });
-        }
-    };
-
-    // 2. ALERT DETECTION LOGIC
+    // 3. Trigger sound and detection logic
     useEffect(() => {
         if (!data || isOffline) {
             setAlertMessage(null);
@@ -58,30 +38,40 @@ const HardwareDashboard: React.FC = () => {
             return;
         }
 
-        const { weight, temperature, salinity } = data;
+        const { weight, temperature, salinity, alert } = data;
+
+        // Thresholds
+        const weightAlert = weight > 50;
+        const tempAlert = temperature > 35;
+        const saltAlert = salinity > 40;
+
         const currentAlerts = {
-            weight: weight > 70,
-            temp: temperature > 35,
-            salt: salinity > 40
+            weight: weightAlert,
+            temp: tempAlert,
+            salt: saltAlert
         };
 
-        setActiveAlerts(currentAlerts);
+        // Determine if any alert is active
+        const hasAnyAlert = alert === true || weightAlert || tempAlert || saltAlert;
 
         // Determine priority message
         let newMsg: string | null = null;
-        if (currentAlerts.weight) newMsg = "⚠ Net Overload – Pull Net Immediately!";
-        else if (currentAlerts.temp) newMsg = "⚠ Water Temperature Too High";
-        else if (currentAlerts.salt) newMsg = "⚠ Salinity Level Critical";
+        if (weightAlert) newMsg = "⚠ Net Overload – Pull Net Immediately!";
+        else if (tempAlert) newMsg = "⚠ Water Temperature Too High";
+        else if (saltAlert) newMsg = "⚠ Salinity Level Critical";
+        else if (alert) newMsg = "⚠ Hardware Alert Detected";
 
-        // 3. TRIGGER SOUND AND LOGGING
-        // Only trigger if state changes (prevent repeat sound)
-        if (newMsg && newMsg !== alertMessage) {
-            playAlertSound();
-            console.log(`[ALERT] ${newMsg.replace('⚠ ', '')}`);
+        // Only trigger if alert state changes (prevent multiple loops)
+        if (hasAnyAlert && newMsg !== alertMessage) {
+            console.log("Alert detected – playing sound.");
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(err => console.log("Play failed:", err));
         }
 
+        setActiveAlerts(currentAlerts);
         setAlertMessage(newMsg);
     }, [data, isOffline, alertMessage]);
+
 
     const StatCard = ({ icon: Icon, title, value, unit, colorClass, isAlert }: any) => (
         <div className={`glass-card p-6 flex flex-col items-center justify-center space-y-4 hover:scale-105 transition-all duration-300 border-2 

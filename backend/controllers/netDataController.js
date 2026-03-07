@@ -1,5 +1,5 @@
-const NetData = require('../models/NetData');
-const sendEmail = require('../services/emailService');
+import NetData from '../models/NetData.js';
+import sendEmail from '../services/emailService.js';
 
 // @desc    Receive hardware data from Arduino
 // @route   POST /api/netdata
@@ -52,7 +52,7 @@ const getLatestNetData = async (req, res) => {
     }
 };
 
-module.exports = {
+export {
     receiveHardwareData,
     getLatestNetData
 };

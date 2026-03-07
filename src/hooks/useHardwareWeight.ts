@@ -1,67 +1,108 @@
 import { useState, useEffect, useRef } from 'react';
 
+interface HardwareData {
+    weight: number;
+    temperature: number;
+    salinity: number;
+    timestamp: number;
+    alert?: boolean;
+    stress: "NORMAL" | "HIGH";
+}
+
 export const useHardwareWeight = () => {
-    const [weight, setWeight] = useState<number | null>(null);
+    const [data, setData] = useState<HardwareData | null>(null);
     const [isOffline, setIsOffline] = useState(true);
-    const socketRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<any>(null);
+    const wsRef = useRef<WebSocket | null>(null);
+    const reconnectTimerRef = useRef<any>(null);
+    const isUnmounting = useRef(false);
 
     const connect = () => {
-        // Port 5001 with /hardware path
-        const wsUrl = 'ws://localhost:5001/hardware';
-        console.log('Connecting to Hardware Weight Stream...');
+        if (isUnmounting.current) return;
 
-        if (socketRef.current) {
-            socketRef.current.close();
+        if (wsRef.current) {
+            if (wsRef.current.readyState === WebSocket.CONNECTING || wsRef.current.readyState === WebSocket.OPEN) {
+                return;
+            }
+            wsRef.current.onclose = null;
+            wsRef.current.close();
+            wsRef.current = null;
         }
 
-        const ws = new WebSocket(wsUrl);
-        socketRef.current = ws;
+        const wsUrl = 'ws://localhost:5001/hardware';
 
-        ws.onopen = () => {
-            console.log('Hardware Weight Stream Connected');
-            setIsOffline(false);
-        };
+        try {
+            const ws = new WebSocket(wsUrl);
+            wsRef.current = ws;
 
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                // Standardize weight if it comes in "value" or "weight" format
-                const weightVal = data.weight ?? data.value;
-                if (weightVal !== undefined) {
-                    setWeight(weightVal);
-                    setIsOffline(false);
+            ws.onopen = () => {
+                if (isUnmounting.current) {
+                    ws.close();
+                    return;
                 }
-            } catch (err) {
-                console.error('Error parsing weight data:', err);
-            }
-        };
+                setIsOffline(false);
+            };
 
-        ws.onclose = () => {
-            console.log('Hardware Weight Stream Closed. Retrying in 3s...');
-            setIsOffline(true);
-            if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = setTimeout(connect, 3000);
-        };
+            ws.onmessage = (event) => {
+                if (isUnmounting.current) return;
+                try {
+                    const parsed = JSON.parse(event.data);
 
-        ws.onerror = () => {
+                    // Logic to determine stress if not provided by server
+                    // Requirement: Ensure stress value comes from hardware WebSocket
+                    // If the server doesn't send "stress", we can map it from alert or thresholds
+                    const stressValue = parsed.stress || (
+                        (parsed.weight > 50 || parsed.temperature > 35 || parsed.salinity > 40 || parsed.alert)
+                            ? "HIGH"
+                            : "NORMAL"
+                    );
+
+                    setData({
+                        weight: parsed.weight ?? 0,
+                        temperature: parsed.temperature ?? 0,
+                        salinity: parsed.salinity ?? 0,
+                        timestamp: parsed.timestamp ?? Date.now(),
+                        alert: parsed.alert,
+                        stress: stressValue
+                    });
+                    setIsOffline(false);
+                } catch (err) {
+                    console.error("Error parsing hardware data:", err);
+                }
+            };
+
+            ws.onclose = () => {
+                if (isUnmounting.current) return;
+                setIsOffline(true);
+                wsRef.current = null;
+                if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+                reconnectTimerRef.current = setTimeout(() => {
+                    if (!isUnmounting.current) connect();
+                }, 5000);
+            };
+
+            ws.onerror = () => {
+                setIsOffline(true);
+            };
+        } catch (err) {
             setIsOffline(true);
-            ws.close();
-        };
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = setTimeout(connect, 5000);
+        }
     };
 
     useEffect(() => {
+        isUnmounting.current = false;
         connect();
+
         return () => {
-            if (socketRef.current) {
-                socketRef.current.close();
-                socketRef.current = null;
-            }
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
+            isUnmounting.current = true;
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+            if (wsRef.current) {
+                wsRef.current.onclose = null;
+                wsRef.current.close();
             }
         };
     }, []);
 
-    return { weight, isOffline };
+    return { data, isOffline, weight: data?.weight ?? null, stress: data?.stress ?? "NORMAL" };
 };

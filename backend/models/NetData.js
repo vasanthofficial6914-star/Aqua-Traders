@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const netDataSchema = new mongoose.Schema({
     fisherman: {
@@ -25,4 +25,5 @@ const netDataSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('NetData', netDataSchema);
+const NetData = mongoose.model('NetData', netDataSchema);
+export default NetData;

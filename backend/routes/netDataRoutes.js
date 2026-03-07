@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { receiveHardwareData, getLatestNetData } = require('../controllers/netDataController');
+import { receiveHardwareData, getLatestNetData } from '../controllers/netDataController.js';
 
 router.post('/', receiveHardwareData);
 router.get('/latest', getLatestNetData);
 
-module.exports = router;
+export default router;

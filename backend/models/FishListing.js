@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const fishListingSchema = new mongoose.Schema({
     fishermanId: {
@@ -36,4 +36,5 @@ const fishListingSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-module.exports = mongoose.model('FishListing', fishListingSchema);
+const FishListing = mongoose.model('FishListing', fishListingSchema);
+export default FishListing;

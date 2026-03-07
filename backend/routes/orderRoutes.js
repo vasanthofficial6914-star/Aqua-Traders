@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { createOrder, getMyOrders, buyFish } = require('../controllers/orderController');
-const { protect } = require('../middleware/authMiddleware');
+import { createOrder, getMyOrders, buyFish } from '../controllers/orderController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 router.post('/buy', protect, buyFish);
 router.get('/myorders', protect, getMyOrders);
@@ -9,4 +9,4 @@ router.get('/myorders', protect, getMyOrders);
 router.route('/')
     .post(protect, createOrder);
 
-module.exports = router;
+export default router;

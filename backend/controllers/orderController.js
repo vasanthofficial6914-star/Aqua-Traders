@@ -1,7 +1,7 @@
-const Order = require('../models/Order');
-const FishListing = require('../models/FishListing');
-const User = require('../models/User');
-const sendEmail = require('../services/emailService');
+import Order from '../models/Order.js';
+import FishListing from '../models/FishListing.js';
+import User from '../models/User.js';
+import sendEmail from '../services/emailService.js';
 
 // @desc    Create a new order / Buy fish
 // @route   POST /api/orders/buy
@@ -114,7 +114,7 @@ const getMyOrders = async (req, res) => {
     }
 };
 
-module.exports = {
+export {
     buyFish,
     createOrder,
     getMyOrders

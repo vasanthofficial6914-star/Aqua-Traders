@@ -335,7 +335,7 @@ const FishermanDashboard: React.FC = () => {
                                             {hardwareOffline ? (
                                                 <span style={{ color: '#ef4444' }}>Hardware Offline</span>
                                             ) : (
-                                                hardwareWeight === null ? 'Waiting for hardware...' : `${netLoad} kg`
+                                                hardwareWeight ? `${hardwareWeight} kg` : "Waiting for hardware..."
                                             )}
                                         </div>
                                     )}

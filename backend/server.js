@@ -1,14 +1,15 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
+import dotenv from 'dotenv';
+dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import connectDB from './config/db.js';
 
 // Route files
-const authRoutes = require('./routes/authRoutes');
-const fishRoutes = require('./routes/fishRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const netDataRoutes = require('./routes/netDataRoutes');
-const hardwareRoutes = require('./routes/hardwareRoutes');
+import authRoutes from './routes/authRoutes.js';
+import fishRoutes from './routes/fishRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import netDataRoutes from './routes/netDataRoutes.js';
+import hardwareRoutes from './routes/hardwareRoutes.js';
 
 // Connect to DB
 connectDB();

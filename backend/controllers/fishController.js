@@ -1,4 +1,4 @@
-const FishListing = require('../models/FishListing');
+import FishListing from '../models/FishListing.js';
 
 // @desc    Upload new fish listing with photo
 // @route   POST /api/fish/upload
@@ -205,7 +205,7 @@ const updateStockStatus = async (req, res) => {
     }
 };
 
-module.exports = {
+export {
     uploadListingPhoto,
     createListing,
     getListings,

@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { createListing, getListings, uploadListingPhoto, updateListing, deleteListing, getMyListings, toggleStockStatus, updateStockStatus } = require('../controllers/fishController');
-const { protect } = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+import { createListing, getListings, uploadListingPhoto, updateListing, deleteListing, getMyListings, toggleStockStatus, updateStockStatus } from '../controllers/fishController.js';
+import { protect } from '../middleware/authMiddleware.js';
+import upload from '../middleware/uploadMiddleware.js';
 
 // Fisherman's own listings - Both hyphen and slash as requested
 router.get('/my-listings', protect, getMyListings);
@@ -28,4 +28,4 @@ router.route('/')
     .get(getListings)
     .post(protect, createListing);
 
-module.exports = router;
+export default router;

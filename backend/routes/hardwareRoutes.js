@@ -1,4 +1,4 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
 
 // Memory store for latest hardware data
@@ -32,4 +32,4 @@ router.get('/latest', (req, res) => {
     res.status(200).json(latestHardwareData);
 });
 
-module.exports = router;
+export default router;

@@ -13,64 +13,89 @@ export const useHardwareData = () => {
     const [error, setError] = useState<string | null>(null);
     const socketRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<any>(null);
+    const hasUnmounted = useRef(false);
 
     const connect = () => {
-        // Port 5001 with /hardware path
+        if (hasUnmounted.current) return;
+
         const wsUrl = 'ws://localhost:5001/hardware';
 
-        console.log('Connecting to Hardware Data WebSocket...');
         if (socketRef.current) {
+            if (socketRef.current.readyState === WebSocket.CONNECTING || socketRef.current.readyState === WebSocket.OPEN) {
+                return;
+            }
+            socketRef.current.onclose = null;
             socketRef.current.close();
+            socketRef.current = null;
         }
 
-        const ws = new WebSocket(wsUrl);
-        socketRef.current = ws;
+        console.log('🔗 Connecting to hardware data stream...');
 
-        ws.onopen = () => {
-            console.log('Hardware Data Connected');
-            setIsOffline(false);
-            setError(null);
-        };
+        try {
+            const ws = new WebSocket(wsUrl);
+            socketRef.current = ws;
 
-        ws.onmessage = (event) => {
-            try {
-                const parsedData = JSON.parse(event.data);
-                // Standardize weight if it comes in "value" format
-                const normalized = {
-                    weight: parsedData.weight ?? parsedData.value ?? 0,
-                    temperature: parsedData.temperature ?? 0,
-                    salinity: parsedData.salinity ?? 0,
-                    timestamp: parsedData.timestamp ?? Date.now()
-                };
-                setData(normalized);
-            } catch (err) {
-                console.error('Error parsing hardware data:', err);
-            }
-        };
+            ws.onopen = () => {
+                console.log('✅ Connected to hardware server');
+                setIsOffline(false);
+                setError(null);
+            };
 
-        ws.onclose = () => {
-            console.log('Hardware Data Stream Closed. Retrying in 3s...');
-            setIsOffline(true);
+            ws.onmessage = (event) => {
+                if (hasUnmounted.current) return;
+                try {
+                    const parsedData = JSON.parse(event.data);
+                    const normalized = {
+                        weight: parsedData.weight ?? parsedData.value ?? 0,
+                        temperature: parsedData.temperature ?? 0,
+                        salinity: parsedData.salinity ?? 0,
+                        timestamp: parsedData.timestamp ?? Date.now()
+                    };
+                    setData(normalized);
+                } catch (err) {
+                    // Silently ignore
+                }
+            };
+
+            ws.onclose = () => {
+                if (hasUnmounted.current) return;
+                console.warn('🔌 Disconnected from hardware server');
+                setIsOffline(true);
+                socketRef.current = null;
+
+                if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    console.log('🔄 Reconnecting to hardware data stream...');
+                    connect();
+                }, 5000);
+            };
+
+            ws.onerror = () => {
+                setIsOffline(true);
+            };
+        } catch (err) {
+            console.error('❌ Failed to connect hardware stream');
             if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = setTimeout(connect, 3000);
-        };
-
-        ws.onerror = (err) => {
-            console.error('Hardware WebSocket Error');
-            ws.close();
-        };
+            reconnectTimeoutRef.current = setTimeout(connect, 5000);
+        }
     };
 
     useEffect(() => {
+        hasUnmounted.current = false;
         connect();
 
         return () => {
-            if (socketRef.current) {
-                socketRef.current.close();
-                socketRef.current = null;
-            }
+            console.log('🧹 Cleaning up hardware data connection...');
+            hasUnmounted.current = true;
+
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
+            }
+
+            if (socketRef.current) {
+                socketRef.current.onclose = null;
+                socketRef.current.close();
+                socketRef.current = null;
             }
         };
     }, []);
