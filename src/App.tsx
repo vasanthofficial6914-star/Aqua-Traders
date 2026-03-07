@@ -1,87 +1,119 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './index.css';
 import FishermanDashboard from './components/FishermanDashboard';
 import CustomerDashboard from './components/CustomerDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import GovernmentSchemes from './components/GovernmentSchemes';
+import ProductDetails from './components/ProductDetails';
+import OrderTracking from './components/OrderTracking';
 import AIChatbot from './components/AIChatbot';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import OrderPage from './pages/OrderPage';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import PrivateRoute from './routes/PrivateRoute';
 
-type Role = 'fisherman' | 'customer' | 'admin' | 'guest';
+const Navigation = () => {
+  const { role, user, isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const App: React.FC = () => {
-  const [role, setRole] = useState<Role>('guest');
-  const [activeTab, setActiveTab] = useState<'home' | 'schemes'>('home');
+  // Hide specific controls on login and signup pages
+  const isAuthPage = location.pathname === '/' || location.pathname === '/signup';
 
-  const renderDashboard = () => {
-    if (activeTab === 'schemes') {
-      return <GovernmentSchemes onBack={() => setActiveTab('home')} />;
-    }
-
-    switch (role) {
-      case 'fisherman':
-        return <FishermanDashboard />;
-      case 'customer':
-        return <CustomerDashboard />;
-      case 'admin':
-        return <AdminDashboard />;
-      default:
-        return (
-          <div className="landing-page animate-fade-in" style={{ padding: '2rem', textAlign: 'center' }}>
-            <div className="bg-ocean" style={{ height: '300px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', marginBottom: '2rem' }}>
-              <div>
-                <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>FisherDirect</h1>
-                <p style={{ fontSize: '1.2rem', opacity: 0.9 }}>Connecting the Ocean Directly to Your Kitchen</p>
-              </div>
-            </div>
-
-            <div className="grid-container">
-              <div className="premium-card p-4" onClick={() => setRole('customer')} style={{ cursor: 'pointer', padding: '2rem' }}>
-                <h2 style={{ color: 'var(--primary)', marginBottom: '1rem' }}>I am a Buyer</h2>
-                <p>Browse fresh catch, filter by location, and order directly from fishermen.</p>
-                <button className="btn btn-primary" style={{ marginTop: '1.5rem' }}>Start Shopping</button>
-              </div>
-
-              <div className="premium-card p-4" onClick={() => setRole('fisherman')} style={{ cursor: 'pointer', padding: '2rem' }}>
-                <h2 style={{ color: 'var(--primary)', marginBottom: '1rem' }}>I am a Fisherman</h2>
-                <p>Eliminate middlemen. List your daily catch and earn more from your hard work.</p>
-                <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }}>Sell My Catch</button>
-              </div>
-
-              <div className="premium-card p-4" onClick={() => setActiveTab('schemes')} style={{ cursor: 'pointer', padding: '2rem' }}>
-                <h2 style={{ color: 'var(--accent)', marginBottom: '1rem' }}>Govt Schemes</h2>
-                <p>Access PMMSY, KCC, and welfare funds in one dedicated platform.</p>
-                <button className="btn" style={{ background: '#fef3c7', color: '#92400e', marginTop: '1.5rem' }}>View Schemes</button>
-              </div>
-            </div>
-          </div>
-        );
-    }
+  const handleLogoClick = () => {
+    if (role === 'buyer' || role === 'customer') navigate('/customerdashboard');
+    else if (role === 'fisherman') navigate('/fishermandashboard');
+    else if (role === 'admin') navigate('/admindashboard');
+    else navigate('/');
   };
 
   return (
-    <div className="app-container">
-      <nav className="glass-morphism" style={{ position: 'sticky', top: 0, zIndex: 100, padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--primary)', cursor: 'pointer' }} onClick={() => { setRole('guest'); setActiveTab('home'); }}>
-          FisherDirect
-        </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn" style={{ background: 'transparent' }} onClick={() => setActiveTab('schemes')}>Schemes</button>
-          {role !== 'guest' && (
-            <button className="btn btn-secondary" onClick={() => setRole('guest')}>Logout</button>
-          )}
-        </div>
-      </nav>
+    <nav className="glass-nav sticky top-0 z-[100] px-8 py-4 flex justify-between items-center">
+      <div
+        className="font-extrabold text-2xl text-neon-400 cursor-pointer drop-shadow-[0_0_8px_rgba(0,245,255,0.8)] hover:scale-105 transition-transform"
+        onClick={handleLogoClick}
+      >
+        FisherDirect
+      </div>
+      <div className="flex gap-6 items-center">
+        {location.pathname !== '/schemes' && (
+          <button className="text-white font-medium hover:text-neon-400 transition-colors drop-shadow-md" onClick={() => navigate('/schemes')}>
+            Programs & Schemes
+          </button>
+        )}
+        {isAuthenticated && !isAuthPage ? (
+          <>
+            {user && <span className="font-semibold text-white/90 mr-2 drop-shadow-md">Hi, {user.name}</span>}
+            <button className="btn-neon" onClick={() => { logout(); navigate('/'); }}>Logout</button>
+          </>
+        ) : null}
+      </div>
+    </nav>
+  );
+};
 
-      <main>
-        {renderDashboard()}
+const AppContent = () => {
+  const { role } = useAuth();
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex flex-col min-h-screen relative z-10">
+      <div className="bubbles-container">
+        {[...Array(15)].map((_, i) => (
+          <div key={i} className="bubble" style={{ left: `${Math.random() * 100}%`, animationDuration: `${Math.random() * 8 + 4}s`, animationDelay: `${Math.random() * 5}s`, width: `${Math.random() * 20 + 5}px`, height: `${Math.random() * 20 + 5}px` }}></div>
+        ))}
+      </div>
+
+      <Navigation />
+
+      <main className="flex-1 w-full max-w-[1400px] mx-auto z-10">
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+
+          <Route path="/schemes" element={<GovernmentSchemes onBack={() => navigate(-1)} />} />
+
+          <Route element={<PrivateRoute allowedRole={["customer", "buyer"]} />}>
+            <Route path="/customerdashboard" element={<CustomerDashboard />} />
+            <Route path="/customer/orders" element={<CustomerDashboard defaultTab="orders" />} />
+            <Route path="/order/:fishId" element={<OrderPage />} />
+            <Route path="/products" element={<ProductDetails product={{ id: 1, type: '', price: 0, location: '', image: '' } as any} onBack={() => navigate(-1)} onAddToCart={() => { }} />} />
+            <Route path="/orders" element={<OrderTracking orderId="DUMMY-123" onBack={() => navigate(-1)} />} />
+          </Route>
+
+          <Route element={<PrivateRoute allowedRole="fisherman" />}>
+            <Route path="/fishermandashboard" element={<FishermanDashboard />} />
+          </Route>
+
+          <Route element={<PrivateRoute allowedRole="admin" />}>
+            <Route path="/admindashboard" element={<AdminDashboard />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
-      <footer style={{ padding: '3rem 2rem', background: 'var(--secondary)', color: 'white', textAlign: 'center', marginTop: '4rem' }}>
-        <p>© 2026 FisherDirect. Empowering small-scale fishermen across India.</p>
+      <footer className="relative mt-auto z-10">
+        <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-neon-400/50 to-transparent"></div>
+        <div className="p-8 bg-ocean-900/80 backdrop-blur-md text-white text-center">
+          <p className="text-white/80 text-sm font-medium tracking-wide">© 2026 FisherDirect. Connecting the Ocean Directly to Your Kitchen.</p>
+        </div>
       </footer>
 
       <AIChatbot role={role} />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
 

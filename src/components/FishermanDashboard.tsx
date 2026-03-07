@@ -1,86 +1,36 @@
 import React, { useState, useEffect, useRef } from "react";
 import { isSeasonalRegulationActive } from "../utils/dateUtils";
+import {
+    Fish,
+    ClipboardList,
+    BarChart3,
+    ScrollText,
+    Lightbulb,
+    Anchor,
+    Home,
+    User,
+    Plus,
+    ShieldAlert,
+    Bell,
+    ArrowLeft,
+    Trash2,
+    PackageCheck,
+    PackageX,
+    LayoutList
+} from "lucide-react";
 
 // ---------- PREMIUM STYLES ----------
-const styles = {
-    appContainer: {
-        backgroundColor: "#f0f9ff",
-        minHeight: "100vh",
-        paddingBottom: "80px", // space for bottom nav
-        fontFamily: "'Inter', system-ui, sans-serif",
-    },
-    header: {
-        backgroundColor: "#0ea5e9",
-        padding: "1.5rem 1rem",
-        color: "white",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        borderRadius: "0 0 20px 20px",
-        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-    },
-    adviceBanner: {
-        background: "white",
-        margin: "1rem",
-        padding: "1rem",
-        borderRadius: "12px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-        borderLeft: "4px solid #0ea5e9",
-    },
-    grid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: "1rem",
-        padding: "1rem",
-    },
-    card: {
-        backgroundColor: "white",
-        padding: "1.5rem 1rem",
-        borderRadius: "16px",
-        display: "flex",
-        flexDirection: "column" as const,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0.5rem",
-        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-        cursor: "pointer",
-        transition: "transform 0.2s",
-    },
-    bottomNav: {
-        position: "fixed" as const,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: "white",
-        height: "70px",
-        display: "flex",
-        justifyContent: "space-around",
-        alignItems: "center",
-        borderTop: "1px solid #e2e8f0",
-        boxShadow: "0 -2px 10px rgba(0,0,0,0.05)",
-    },
-    navItem: {
-        display: "flex",
-        flexDirection: "column" as const,
-        alignItems: "center",
-        fontSize: "0.75rem",
-        color: "#64748b",
-        gap: "0.25rem",
-        cursor: "pointer",
-    },
-    activeNavItem: {
-        color: "#0ea5e9",
-    }
-};
+// Removed static style objects in favor of Tailwind classes
 
 const FishermanDashboard: React.FC = () => {
-    const [activeView, setActiveView] = useState<"home" | "upload" | "orders" | "income" | "schemes" | "advice" | "profile" | "net-monitor">("home");
+    const [activeView, setActiveView] = useState<"home" | "upload" | "orders" | "income" | "schemes" | "advice" | "profile" | "net-monitor" | "listings">("home");
+    const [myListings, setMyListings] = useState<any[]>([]);
     const [lang, setLang] = useState<"en" | "ta">("en");
     const [isOnline, setIsOnline] = useState(window.navigator.onLine);
-    const [expenses, setExpenses] = useState({ fuel: 0, ice: 0, wages: 0, repairs: 0, other: 0 });
-    const [revenue, setRevenue] = useState(15400);
-    const [weather, setWeather] = useState<"Sunny" | "Cloudy" | "Stormy">("Sunny");
-    const [orders, setOrders] = useState([
+    const [expenses] = useState({ fuel: 0, ice: 0, wages: 0, repairs: 0, other: 0 });
+    const [revenue] = useState(15400);
+    const [weather] = useState<"Sunny" | "Cloudy" | "Stormy">("Sunny");
+    const [orders] = useState([
         { id: "ORD-9921", customer: "The Grand Marina", items: "Seer Fish (5kg)", amount: 2500, status: "Pending", time: "10:30 AM" },
         { id: "ORD-9920", customer: "Coastline Bistro", items: "Mackerel (12kg)", amount: 3600, status: "Completed", time: "Yesterday" },
         { id: "ORD-9919", customer: "Annai Seafoods", items: "Tuna (8kg)", amount: 4000, status: "Completed", time: "Yesterday" },
@@ -179,6 +129,77 @@ const FishermanDashboard: React.FC = () => {
     const profit = revenue - totalExpenses;
     const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : "0";
 
+    const fetchMyListings = async () => {
+        try {
+            const token = localStorage.getItem('fisherDirectToken');
+            const res = await fetch('http://localhost:5000/api/fish/mylistings', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setMyListings(data);
+            }
+        } catch (err) {
+            console.error("Failed to fetch my listings", err);
+        }
+    };
+
+    const handleDeleteListing = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this listing?")) return;
+        try {
+            const token = localStorage.getItem('fisherDirectToken');
+            const res = await fetch(`http://localhost:5000/api/fish/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                alert("Listing deleted successfully!");
+                fetchMyListings();
+            } else {
+                const data = await res.json();
+                alert("Delete failed: " + data.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error connecting to server");
+        }
+    };
+
+    useEffect(() => {
+        if (activeView === 'listings' || activeView === 'upload') {
+            fetchMyListings();
+        }
+    }, [activeView]);
+
+    const handleUpdateStockStatus = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'in_stock' ? 'stock_out' : 'in_stock';
+        try {
+            console.log(`Updating stock status for ${id} to ${newStatus}...`);
+            const token = localStorage.getItem('fisherDirectToken');
+            const res = await fetch(`http://localhost:5000/api/fish/${id}/status`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                console.log("Stock status updated successfully:", data);
+                fetchMyListings();
+            } else {
+                console.error("Update failed:", data);
+                alert(`Failed: ${data.message || "Unknown error"}`);
+            }
+        } catch (err) {
+            console.error("Network error during status update:", err);
+            alert("Error connecting to server to update stock status");
+        }
+    };
+
     // ---------- SYNC LOGIC ----------
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -204,6 +225,7 @@ const FishermanDashboard: React.FC = () => {
             advice: "Today's Advice",
             profile: "Profile",
             net_monitor: "Net Monitor 📡",
+            listings: "My Listings",
             switch: "தமிழ்",
         },
         ta: {
@@ -217,6 +239,7 @@ const FishermanDashboard: React.FC = () => {
             advice: "இன்றைய அறிவுரை",
             profile: "சுயவிவரம்",
             net_monitor: "வலை கண்காணிப்பு",
+            listings: "எனது பதிவுகள்",
             switch: "English",
         }
     };
@@ -230,44 +253,42 @@ const FishermanDashboard: React.FC = () => {
     };
 
     return (
-        <div style={styles.appContainer}>
+        <div className="pb-24 relative z-10 text-white min-h-screen">
             {/* ---------- HEADER ---------- */}
-            <header style={styles.header}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.5rem' }}>🚢</span>
-                    <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800 }}>{currentT.title}</h1>
+            <header className="glass-nav sticky top-0 z-[100] px-6 py-4 flex justify-between items-center border-b border-white/10 shadow-lg">
+                <div className="flex items-center gap-2">
+                    <Fish className="text-neon-400 drop-shadow-[0_0_8px_rgba(0,245,255,0.6)]" size={32} />
+                    <h1 className="text-xl font-semibold text-white tracking-wide drop-shadow-sm">{currentT.title}</h1>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: isOnline ? '#22c55e' : '#ef4444',
-                        boxShadow: `0 0 8px ${isOnline ? '#22c55e' : '#ef4444'}`
-                    }}></div>
+                <div className="flex gap-4 items-center">
+                    <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] ${isOnline ? 'bg-neon-400 text-neon-400' : 'bg-red-500 text-red-500'}`}></div>
                     <button
                         onClick={() => setLang(lang === 'en' ? 'ta' : 'en')}
-                        style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.8rem' }}
+                        className="bg-white/10 hover:bg-white/20 transition-colors border-none text-white px-4 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md"
                     >
                         {currentT.switch}
                     </button>
-                    <div style={{ fontSize: '1.25rem' }}>🔔</div>
+                    <div className="text-xl cursor-pointer hover:scale-110 transition-transform drop-shadow-md text-white/70 hover:text-white">
+                        <Bell size={24} />
+                    </div>
                 </div>
             </header>
 
             {/* ---------- CONTENT ---------- */}
-            <main>
+            <main className="max-w-4xl mx-auto p-4 md:p-8">
                 {activeView === "home" && (
                     <div className="animate-fade-in">
-                        <div style={styles.adviceBanner}>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <span style={{ color: '#0ea5e9' }}>🌊</span>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', letterSpacing: '1px' }}>{currentT.advice_title}</span>
+                        <div className="glass-card mb-6 p-6 border-l-4 border-l-neon-400 bg-ocean-800/40">
+                            <div className="flex gap-2 items-center mb-2">
+                                <ShieldAlert size={18} className="text-neon-400 drop-shadow-[0_0_5px_#00f5ff]" />
+                                <span className="text-xs font-bold text-white/50 tracking-widest uppercase">{currentT.advice_title}</span>
                             </div>
-                            <p style={{ margin: 0, fontSize: '0.9rem', color: '#1e293b', fontWeight: 500 }}>
+                            <p className="m-0 text-base text-white/90 font-medium tracking-wide">
                                 {getAdviceSummary()}
                             </p>
-                            <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.4rem' }}>• Risk: Moderate</div>
+                            <div className="text-xs text-red-500 mt-2 font-bold uppercase tracking-wider shadow-red-500/50 drop-shadow-sm flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block animate-pulse"></span> Risk: Moderate
+                            </div>
                         </div>
 
                         {/* LIVE NET STATUS ON HOME PAGE */}
@@ -349,150 +370,322 @@ const FishermanDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        <div style={styles.grid}>
-                            <div style={styles.card} onClick={() => setActiveView("upload")}>
-                                <div style={{ background: '#e0f2fe', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>🐟</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.upload}</span>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("upload")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <Fish size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.upload}</span>
                             </div>
-                            <div style={styles.card} onClick={() => setActiveView("orders")}>
-                                <div style={{ background: '#fef3c7', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>📋</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.orders}</span>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("orders")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <ClipboardList size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.orders}</span>
                             </div>
-                            <div style={styles.card} onClick={() => setActiveView("income")}>
-                                <div style={{ background: '#dcfce7', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>📈</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.income}</span>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("income")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <BarChart3 size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.income}</span>
                             </div>
-                            <div style={styles.card} onClick={() => setActiveView("schemes")}>
-                                <div style={{ background: '#ede9fe', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>📜</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.schemes}</span>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("schemes")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <ScrollText size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.schemes}</span>
                             </div>
-                            <div style={styles.card} onClick={() => setActiveView("advice")}>
-                                <div style={{ background: '#fce7f3', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>💡</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.advice}</span>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("advice")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <Lightbulb size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.advice}</span>
                             </div>
-                            <div style={styles.card} onClick={() => setActiveView("net-monitor")}>
-                                <div style={{ background: '#fef2f2', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>⚓</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.net_monitor}</span>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("net-monitor")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-sea-500/50 transition-all">
+                                    <Anchor size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-sea-300 transition-colors uppercase tracking-wider">{currentT.net_monitor}</span>
                             </div>
-                            <div style={styles.card} onClick={() => setActiveView("profile")}>
-                                <div style={{ background: '#f1f5f9', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>👤</div>
-                                <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{currentT.profile}</span>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("profile")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <User size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.profile}</span>
                             </div>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 hover:scale-105 hover:shadow-cyan-400/50 transition-all duration-300 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer group" onClick={() => setActiveView("listings")}>
+                                <div className="bg-ocean-800/80 w-16 h-16 rounded-2xl flex items-center justify-center border border-white/5 group-hover:border-neon-400/50 transition-all">
+                                    <LayoutList size={36} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.7)]" />
+                                </div>
+                                <span className="text-sm font-semibold text-white tracking-wide group-hover:text-neon-400 transition-colors uppercase tracking-wider">{currentT.listings}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeView === "listings" && (
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">My Fish Listings</h2>
+                        </header>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {myListings.length === 0 ? (
+                                <div className="col-span-full rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-12 text-center text-white/50">
+                                    <Fish size={48} className="mx-auto mb-4 opacity-20" />
+                                    <p className="font-semibold tracking-wide">No listings found. Start by uploading one!</p>
+                                </div>
+                            ) : (
+                                myListings.map((listing) => (
+                                    <div key={listing._id} className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 overflow-hidden flex group transition-all hover:bg-white/15">
+                                        <div className="w-32 h-32 bg-ocean-800/50 flex items-center justify-center border-r border-white/5 overflow-hidden">
+                                            {listing.imageUrl ? (
+                                                <img src={`http://localhost:5000${listing.imageUrl}`} alt={listing.fishType} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                            ) : <Fish size={32} className="opacity-20" />}
+                                        </div>
+                                        <div className="p-4 flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex justify-between items-start">
+                                                    <h3 className="font-semibold text-white tracking-wide text-lg">{listing.fishType}</h3>
+                                                    <div className="flex items-center gap-1">
+                                                        {listing.status === 'in_stock' ? (
+                                                            <PackageCheck size={14} className="text-green-400" />
+                                                        ) : (
+                                                            <PackageX size={14} className="text-red-400" />
+                                                        )}
+                                                        <span className={`text-[10px] font-bold uppercase ${listing.status === 'in_stock' ? 'text-green-400' : 'text-red-400'}`}>
+                                                            {listing.status === 'in_stock' ? 'In Stock' : 'Stock Out'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs text-white/50 font-semibold tracking-wide">{listing.quantity}kg • ₹{listing.pricePerKg}/kg</div>
+                                            </div>
+                                            <div className="flex justify-end gap-2 mt-2">
+                                                <button
+                                                    onClick={() => handleUpdateStockStatus(listing._id, listing.status)}
+                                                    className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all border ${listing.status === 'in_stock' ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20'}`}
+                                                >
+                                                    {listing.status === 'in_stock' ? 'Mark Sold Out' : 'Mark In Stock'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteListing(listing._id)}
+                                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded-lg transition-all"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 )}
 
                 {activeView === "upload" && (
-                    <div style={{ padding: '1rem' }} className="animate-fade-in">
-                        <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <button onClick={() => setActiveView('home')} style={{ background: 'none', border: 'none', fontSize: '1.25rem' }}>←</button>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>UPLOAD FISH</h2>
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button
+                                onClick={() => setActiveView('home')}
+                                className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">Upload New Listing</h2>
                         </header>
 
-                        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                        <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!selectedImage) return alert('Please upload an image');
+                            const formElement = e.target as HTMLFormElement;
+                            const formData = new FormData(formElement);
+
+                            if (fileInputRef.current?.files?.[0]) {
+                                formData.delete('image');
+                                formData.append('image', fileInputRef.current.files[0]);
+                            }
+
+                            try {
+                                const token = localStorage.getItem('fisherDirectToken');
+                                const res = await fetch('http://localhost:5000/api/fish/upload', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`
+                                    },
+                                    body: formData
+                                });
+
+                                if (res.ok) {
+                                    alert('Fish uploaded successfully!');
+                                    setActiveView('home');
+                                    setSelectedImage(null);
+                                    formElement.reset();
+                                } else {
+                                    const data = await res.json();
+                                    alert('Upload failed: ' + data.message);
+                                }
+                            } catch (error) {
+                                console.error(error);
+                                alert('Error connecting to server');
+                            }
+                        }} className="glass-card p-8 bg-white/10 backdrop-blur border border-cyan-500/30">
                             <input
                                 type="file"
+                                name="image"
                                 ref={fileInputRef}
                                 onChange={handleImageChange}
-                                style={{ display: 'none' }}
+                                className="hidden"
                                 accept="image/*"
                             />
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    padding: selectedImage ? '0.5rem' : '2rem',
-                                    border: '2px dashed #0ea5e9',
-                                    borderRadius: '12px',
-                                    marginBottom: '1.5rem',
-                                    backgroundColor: '#f0f9ff',
-                                    cursor: 'pointer',
-                                    overflow: 'hidden',
-                                    position: 'relative'
-                                }}
+                                className={`flex flex-col items-center border-2 border-dashed border-neon-400/50 rounded-2xl mb-8 bg-ocean-800/50 hover:bg-ocean-800/80 transition-colors cursor-pointer overflow-hidden relative ${selectedImage ? 'p-2' : 'p-12'}`}
                             >
                                 {selectedImage ? (
                                     <>
-                                        <img src={selectedImage} alt="Preview" style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px' }} />
-                                        <div style={{ position: 'absolute', bottom: '10px', background: 'rgba(14, 165, 233, 0.8)', color: 'white', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700 }}>CHANGE PHOTO</div>
+                                        <img src={selectedImage} alt="Preview" className="w-full max-h-64 object-cover rounded-xl" />
+                                        <div className="absolute bottom-4 bg-neon-400 text-ocean-900 px-3 py-1 rounded font-bold text-xs uppercase tracking-wider shadow-[0_0_10px_rgba(0,245,255,0.5)] transition-all hover:scale-105">CHANGE PHOTO</div>
                                     </>
                                 ) : (
                                     <>
-                                        <span style={{ fontSize: '2rem' }}>📷</span>
-                                        <span style={{ fontSize: '0.8rem', color: '#0ea5e9', fontWeight: 600, marginTop: '0.5rem' }}>UPLOAD FISH IMAGE</span>
+                                        <div className="bg-white/5 p-6 rounded-full mb-4">
+                                            <Plus size={48} className="text-neon-400 drop-shadow-[0_0_10px_rgba(0,245,255,0.6)]" />
+                                        </div>
+                                        <span className="text-sm font-semibold text-white/70 uppercase tracking-widest">Select Fish Image</span>
                                     </>
                                 )}
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="flex flex-col gap-6">
                                 <div>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>🐟 FISH TYPE</label>
-                                    <select style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '0.4rem' }}>
-                                        <option>Seer Fish</option>
-                                        <option>Mackerel</option>
-                                        <option>Tuna</option>
+                                    <label className="text-xs font-bold text-white/50 tracking-widest uppercase mb-2 block">Fish Type</label>
+                                    <select name="fishType" className="input-glass" required>
+                                        <option value="Seer Fish">Seer Fish</option>
+                                        <option value="Mackerel">Mackerel</option>
+                                        <option value="Tuna">Tuna</option>
+                                        <option value="Snapper">Snapper</option>
+                                        <option value="Pomfret">Pomfret</option>
+                                        <option value="Prawns">Prawns</option>
                                     </select>
                                 </div>
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>⚖️ (kg)</label>
-                                        <input type="number" placeholder="10" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '0.4rem' }} />
+                                <div className="flex gap-6">
+                                    <div className="flex-1">
+                                        <label className="text-xs font-bold text-white/50 tracking-widest uppercase mb-2 block">Quantity (kg)</label>
+                                        <input type="number" name="quantity" min="1" placeholder="10" className="input-glass" required />
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>₹ PER KG</label>
-                                        <input type="number" placeholder="500" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '0.4rem' }} />
+                                    <div className="flex-1">
+                                        <label className="text-xs font-bold text-white/50 tracking-widest uppercase mb-2 block">Price per kg (₹)</label>
+                                        <input type="number" name="pricePerKg" min="1" placeholder="500" className="input-glass" required />
                                     </div>
                                 </div>
                             </div>
 
-                            <button style={{ width: '100%', backgroundColor: '#0ea5e9', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 700, marginTop: '2rem', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.4)' }}>
-                                SUBMIT LISTING
+                            <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-white font-semibold px-4 py-4 rounded-lg shadow-[0_0_15px_rgba(34,211,238,0.6)] transition-all w-full mt-8 uppercase tracking-widest text-lg">
+                                Submit Listing
                             </button>
-                        </div>
+                        </form>
+
+                        {activeView === "upload" && (
+                            // ... (I'll keep the previous upload content but update the bottom list)
+                            // Wait, I need to make sure I don't overwrite the form restored in the previous step.
+                            // I'll just target the "My Listings" section within upload view.
+                            <div className="mt-12 px-4">
+                                <h3 className="text-xl font-semibold text-white tracking-wide mb-6 uppercase">Recently Uploaded</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
+                                    {myListings.length === 0 ? (
+                                        <div className="col-span-full rounded-xl bg-white/10 backdrop-blur border border-dashed border-white/20 p-8 text-center text-white/40">
+                                            No fish listings yet.
+                                        </div>
+                                    ) : (
+                                        myListings.map((listing) => (
+                                            <div key={listing._id} className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 overflow-hidden flex flex-col group transition-all hover:bg-white/15">
+                                                <div className="flex">
+                                                    <div className="w-24 h-24 bg-ocean-800/50 flex items-center justify-center border-r border-white/5 shrink-0 overflow-hidden">
+                                                        {listing.imageUrl ? (
+                                                            <img src={`http://localhost:5000${listing.imageUrl}`} alt={listing.fishType} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                        ) : <Fish size={24} className="opacity-20" />}
+                                                    </div>
+                                                    <div className="p-4 flex-1">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <h4 className="font-semibold text-white tracking-wide text-base">{listing.fishType}</h4>
+                                                            <div className="flex items-center gap-1">
+                                                                {listing.status === 'in_stock' ? <PackageCheck size={12} className="text-green-400" /> : <PackageX size={12} className="text-red-400" />}
+                                                                <span className={`text-[9px] font-bold uppercase ${listing.status === 'in_stock' ? 'text-green-400' : 'text-red-400'}`}>
+                                                                    {listing.status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xl font-bold text-neon-400">₹{listing.pricePerKg}<span className="text-[10px] text-white/50 font-normal">/kg</span></div>
+                                                    </div>
+                                                </div>
+                                                <div className="px-4 py-3 bg-white/5 border-t border-white/5 flex justify-between items-center text-xs">
+                                                    <div className="flex gap-4">
+                                                        <div>
+                                                            <div className="text-white/40 uppercase font-bold text-[8px] tracking-widest">Uploaded</div>
+                                                            <div className="text-white font-semibold">{listing.totalQuantity || listing.quantity}kg</div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-neon-400 uppercase font-bold text-[8px] tracking-widest">Remaining</div>
+                                                            <div className="text-neon-400 font-bold">{listing.quantity}kg</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleUpdateStockStatus(listing._id, listing.status)}
+                                                            className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase transition-all border ${listing.status === 'in_stock' ? 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20'}`}
+                                                        >
+                                                            {listing.status === 'in_stock' ? 'Mark Sold' : 'Mark In Stock'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteListing(listing._id)}
+                                                            className="bg-white/10 hover:bg-white/20 text-white/50 hover:text-white p-2 rounded-lg transition-all"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
                 {activeView === "orders" && (
-                    <div style={{ padding: '1rem' }} className="animate-fade-in">
-                        <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <button onClick={() => setActiveView('home')} style={{ background: 'none', border: 'none', fontSize: '1.25rem' }}>←</button>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>MY ORDERS</h2>
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">My Orders</h2>
                         </header>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="flex flex-col gap-6">
                             {orders.map((order) => (
-                                <div key={order.id} style={{
-                                    background: 'white',
-                                    padding: '1.25rem',
-                                    borderRadius: '16px',
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
-                                    borderLeft: `5px solid ${order.status === 'Completed' ? '#22c55e' : '#eab308'}`
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>{order.customer}</span>
-                                        <span style={{
-                                            fontSize: '0.65rem',
-                                            padding: '0.2rem 0.5rem',
-                                            borderRadius: '8px',
-                                            background: order.status === 'Completed' ? '#dcfce7' : '#fef3c7',
-                                            color: order.status === 'Completed' ? '#166534' : '#92400e',
-                                            fontWeight: 800
-                                        }}>
-                                            {order.status.toUpperCase()}
+                                <div key={order.id} className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-6 border-l-4 border-l-neon-400 group hover:-translate-y-1 transition-all">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <span className="text-lg font-semibold text-white group-hover:text-neon-400 transition-colors uppercase tracking-wide">{order.customer}</span>
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase ${order.status === 'Completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-sea-500/20 text-sea-400 border border-sea-500/30'}`}>
+                                            {order.status}
                                         </span>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                        <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '10px', fontSize: '1.2rem' }}>🐟</div>
+                                    <div className="flex gap-4 items-center mb-6">
+                                        <div className="bg-ocean-800/80 p-3 rounded-xl border border-white/5 shadow-inner">
+                                            <Fish size={24} className="text-cyan-400" />
+                                        </div>
                                         <div>
-                                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>{order.items}</div>
-                                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Order ID: {order.id} • {order.time}</div>
+                                            <div className="text-sm font-semibold text-white/90">{order.items}</div>
+                                            <div className="text-xs text-white/50 tracking-wide mt-1">Order ID: <span className="text-white/80">{order.id}</span> • {order.time}</div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
-                                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Total Amount:</span>
-                                        <span style={{ fontSize: '1rem', fontWeight: 800, color: '#0ea5e9' }}>₹{order.amount.toLocaleString()}</span>
+                                    <div className="flex justify-between items-center border-t border-white/10 pt-4">
+                                        <span className="text-xs text-white/50 uppercase tracking-widest font-semibold">Total Amount:</span>
+                                        <span className="text-xl font-bold text-neon-400 drop-shadow-sm">₹{order.amount.toLocaleString()}</span>
                                     </div>
                                 </div>
                             ))}
@@ -501,30 +694,37 @@ const FishermanDashboard: React.FC = () => {
                 )}
 
                 {activeView === "income" && (
-                    <div style={{ padding: '1rem' }} className="animate-fade-in">
-                        <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <button onClick={() => setActiveView('home')} style={{ background: 'none', border: 'none', fontSize: '1.25rem' }}>←</button>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>INCOME INSIGHTS</h2>
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">Income Insights</h2>
                         </header>
-                        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px', marginBottom: '1rem' }}>
-                            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600 }}>MONTHLY INCOME</div>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.5rem', height: '100px', marginTop: '1rem' }}>
-                                <div style={{ backgroundColor: '#0ea5e9', width: '20px', height: '60%' }}></div>
-                                <div style={{ backgroundColor: '#0ea5e9', width: '20px', height: '80%' }}></div>
-                                <div style={{ backgroundColor: '#0ea5e9', width: '20px', height: '40%' }}></div>
-                                <div style={{ backgroundColor: '#0ea5e9', width: '20px', height: '90%' }}></div>
-                                <div style={{ backgroundColor: '#0ea5e9', width: '20px', height: '70%' }}></div>
+
+                        <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-8 mb-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <BarChart3 size={16} className="text-cyan-400" />
+                                <div className="text-xs text-white/50 font-bold uppercase tracking-widest">Monthly Income</div>
+                            </div>
+                            <div className="flex items-end gap-3 h-32 mt-6">
+                                <div className="bg-neon-400 w-8 h-[60%] rounded-t-sm shadow-[0_0_15px_rgba(0,245,255,0.4)] transition-all hover:scale-110"></div>
+                                <div className="bg-sea-400 w-8 h-[80%] rounded-t-sm shadow-[0_0_15px_rgba(2,132,199,0.4)] transition-all hover:scale-110"></div>
+                                <div className="bg-neon-400 w-8 h-[40%] rounded-t-sm shadow-[0_0_15px_rgba(0,245,255,0.4)] transition-all hover:scale-110"></div>
+                                <div className="bg-sea-400 w-8 h-[90%] rounded-t-sm shadow-[0_0_15px_rgba(2,132,199,0.4)] transition-all hover:scale-110"></div>
+                                <div className="bg-neon-400 w-8 h-[70%] rounded-t-sm shadow-[0_0_15px_rgba(0,245,255,0.4)] transition-all hover:scale-110"></div>
                             </div>
                         </div>
-                        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+
+                        <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-8">
+                            <div className="flex justify-between items-center text-white">
                                 <div>
-                                    <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Total Revenue</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>₹{revenue.toLocaleString()}</div>
+                                    <div className="text-xs text-white/50 font-bold uppercase tracking-widest mb-1">Total Revenue</div>
+                                    <div className="text-3xl font-bold tracking-wide drop-shadow-md">₹{revenue.toLocaleString()}</div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ color: '#64748b', fontSize: '0.8rem' }}>Profit Metric</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#22c55e' }}>{margin}%</div>
+                                <div className="text-right">
+                                    <div className="text-xs text-white/50 font-bold uppercase tracking-widest mb-1">Profit Metric</div>
+                                    <div className="text-3xl font-bold text-green-400 drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]">{margin}%</div>
                                 </div>
                             </div>
                         </div>
@@ -532,185 +732,232 @@ const FishermanDashboard: React.FC = () => {
                 )}
 
                 {activeView === "schemes" && (
-                    <div style={{ padding: '1rem' }} className="animate-fade-in">
-                        <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <button onClick={() => setActiveView('home')} style={{ background: 'none', border: 'none', fontSize: '1.25rem' }}>←</button>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>GOVT SCHEMES</h2>
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">Govt Schemes</h2>
                         </header>
-                        <div style={styles.grid}>
-                            <div style={{ ...styles.card, background: '#3b82f6', color: 'white' }}>
-                                <span style={{ fontSize: '1.5rem' }}>🏛️</span>
-                                <span style={{ textAlign: 'center', fontWeight: 600 }}>PMMSY</span>
-                                <button style={{ background: 'white', color: '#3b82f6', border: 'none', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.6rem' }}>APPLY</button>
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-6 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(2,132,199,0.1)] group hover:bg-white/15 transition-all">
+                                <div className="bg-ocean-800/50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                                    <ScrollText size={32} className="text-cyan-400" />
+                                </div>
+                                <span className="font-semibold text-white mb-6 uppercase tracking-widest text-sm">PMMSY</span>
+                                <button className="bg-cyan-500 hover:bg-cyan-400 text-white font-semibold px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(34,211,238,0.6)] transition-all w-full uppercase tracking-widest text-xs">APPLY</button>
                             </div>
-                            <div style={{ ...styles.card, background: '#22c55e', color: 'white' }}>
-                                <span style={{ fontSize: '1.5rem' }}>💳</span>
-                                <span style={{ textAlign: 'center', fontWeight: 600 }}>KCC</span>
-                                <button style={{ background: 'white', color: '#22c55e', border: 'none', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.6rem' }}>APPLY</button>
+                            <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-6 flex flex-col items-center justify-center shadow-[0_0_15px_rgba(34,197,94,0.1)] group hover:bg-white/15 transition-all">
+                                <div className="bg-ocean-800/50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                                    <ScrollText size={32} className="text-green-400" />
+                                </div>
+                                <span className="font-semibold text-white mb-6 uppercase tracking-widest text-sm">KCC</span>
+                                <button className="bg-green-500 hover:bg-green-400 text-white font-semibold px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(34,197,94,0.6)] transition-all w-full uppercase tracking-widest text-xs">APPLY</button>
                             </div>
-                            {/* Add more as needed */}
                         </div>
                     </div>
                 )}
 
                 {activeView === "net-monitor" && (
-                    <div style={{ padding: '1rem' }} className="animate-fade-in">
-                        <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <button onClick={() => setActiveView('home')} style={{ background: 'none', border: 'none', fontSize: '1.25rem' }}>←</button>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>SMART NET MONITOR 📡</h2>
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">Smart Net Monitor</h2>
                         </header>
 
-                        <div style={{ background: '#0f172a', padding: '1.5rem', borderRadius: '16px', color: 'white', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e' }}></div>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>ARDUINO SYSTEM ACTIVE</span>
+                        <div className="rounded-xl bg-ocean-900/80 backdrop-blur border border-white/10 p-6 py-4 flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_10px_#4ade80] animate-pulse"></div>
+                                <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">System Active</span>
                             </div>
-                            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>ID: NET-PRO-X1</span>
+                            <span className="text-[10px] font-mono text-neon-400/80 bg-neon-400/10 px-3 py-1 rounded border border-neon-400/20">ID: NET-PRO-X1</span>
                         </div>
 
-                        <div style={{ background: 'white', padding: '2rem', borderRadius: '24px', textAlign: 'center', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-                            <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, letterSpacing: '1px' }}>CURRENT NET LOAD</div>
+                        <div className="glass-card p-8 text-center bg-ocean-800/40 relative overflow-hidden">
+                            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-neon-400 to-transparent opacity-50"></div>
+                            <div className="text-sm text-neon-400 font-bold tracking-widest mb-4 uppercase">CURRENT NET LOAD</div>
 
                             {isManualMode ? (
-                                <div style={{ margin: '1rem 0' }}>
+                                <div className="my-8 flex justify-center items-center gap-4">
                                     <input
                                         type="number"
                                         value={netLoad}
                                         onChange={(e) => updateManualLoad(Number(e.target.value))}
-                                        style={{ fontSize: '4rem', width: '200px', textAlign: 'center', border: '2px solid #0ea5e9', borderRadius: '16px', fontWeight: 900 }}
+                                        className="input-glass !w-48 !text-6xl !font-black !text-center !py-4 text-white"
                                     />
-                                    <span style={{ fontSize: '2rem' }}> kg</span>
+                                    <span className="text-4xl text-white/50 font-bold">kg</span>
                                 </div>
                             ) : (
-                                <div style={{ fontSize: '5rem', fontWeight: 900, color: netStatus === 'STOP' ? '#ef4444' : '#0ea5e9', margin: '1rem 0' }}>
-                                    {netLoad}<span style={{ fontSize: '1.5rem' }}> kg</span>
+                                <div className={`text-7xl font-black drop-shadow-lg my-8 ${netStatus === 'STOP' ? 'text-red-500 [text-shadow:0_0_20px_rgba(239,68,68,0.5)]' : 'text-white'}`}>
+                                    {netLoad}<span className="text-3xl text-white/50 ml-2 font-bold">kg</span>
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                            <div className="flex justify-center mb-10">
                                 <button
                                     onClick={() => setIsManualMode(!isManualMode)}
-                                    style={{
-                                        padding: '0.8rem 2rem',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        backgroundColor: isManualMode ? '#0ea5e9' : '#f1f5f9',
-                                        color: isManualMode ? 'white' : '#64748b',
-                                        fontWeight: 700,
-                                        cursor: 'pointer'
-                                    }}
+                                    className={`px-8 py-3 rounded-full text-xs font-bold tracking-widest uppercase transition-all shadow-[0_0_15px_rgba(0,245,255,0.2)] hover:shadow-[0_0_20px_rgba(0,245,255,0.4)] ${isManualMode ? 'bg-cyan-500 text-white' : 'bg-transparent text-white/70 border border-white/20 hover:border-white/50 hover:text-white'
+                                        }`}
                                 >
-                                    {isManualMode ? 'RESUME LIVE STREAM' : 'MANUAL INPUT OVERRIDE'}
+                                    {isManualMode ? 'Resume Live Stream' : 'Manual Override'}
                                 </button>
                             </div>
 
-                            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>STRESS INTENSITY</span>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: netLoad >= 50 ? '#ef4444' : '#eab308' }}>{getStressLevel(netLoad)}</span>
+                            <div className="bg-ocean-900/50 border border-white/5 p-6 rounded-2xl mb-8">
+                                <div className="flex justify-between mb-3">
+                                    <span className="text-xs font-bold text-white/50 uppercase tracking-widest">STRESS INTENSITY</span>
+                                    <span className={`text-xs font-black uppercase tracking-widest ${netLoad >= 50 ? 'text-red-500' : 'text-yellow-400'}`}>{getStressLevel(netLoad)}</span>
                                 </div>
-                                <div style={{ height: '12px', background: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${(netLoad / 80) * 100}%`, height: '100%', background: netLoad >= 50 ? '#ef4444' : netLoad >= 30 ? '#f59e0b' : '#22c55e', transition: 'width 0.5s ease-out' }}></div>
+                                <div className="h-4 bg-ocean-950 rounded-full overflow-hidden shadow-inner border border-white/5 relative">
+                                    <div className="absolute inset-0 bg-white/5 w-full h-full strip-pattern opacity-50"></div>
+                                    <div
+                                        className={`h-full transition-all duration-500 relative ${netLoad >= 50 ? 'bg-red-500 shadow-[0_0_15px_#ef4444]' : netLoad >= 30 ? 'bg-yellow-500 shadow-[0_0_15px_#eab308]' : 'bg-green-500 shadow-[0_0_15px_#22c55e]'}`}
+                                        style={{ width: `${(Math.min(netLoad, 80) / 80) * 100}%` }}
+                                    ></div>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem' }}>
+                            <div className="flex gap-4 mb-8">
                                 <button
                                     onClick={() => setActiveIssue('TANGLE')}
-                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '10px', background: activeIssue === 'TANGLE' ? '#f59e0b' : '#f1f5f9', color: activeIssue === 'TANGLE' ? 'white' : '#64748b', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                    className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeIssue === 'TANGLE' ? 'bg-yellow-500 text-ocean-900 shadow-[0_0_15px_#eab308]' : 'bg-ocean-800/50 text-white/50 hover:text-white hover:bg-ocean-700/50 border border-white/10'}`}
                                 >
                                     🌀 TANGLE
                                 </button>
                                 <button
                                     onClick={() => setActiveIssue('TEAR')}
-                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '10px', background: activeIssue === 'TEAR' ? '#ef4444' : '#f1f5f9', color: activeIssue === 'TEAR' ? 'white' : '#64748b', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                    className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeIssue === 'TEAR' ? 'bg-red-500 text-white shadow-[0_0_15px_#ef4444]' : 'bg-ocean-800/50 text-white/50 hover:text-white hover:bg-ocean-700/50 border border-white/10'}`}
                                 >
                                     ❌ TEAR
                                 </button>
                                 <button
                                     onClick={() => setActiveIssue('NONE')}
-                                    style={{ flex: 1, padding: '0.6rem', borderRadius: '10px', background: '#e2e8f0', color: '#64748b', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                                    className="flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all bg-ocean-900 text-white/50 hover:text-white border border-white/5"
                                 >
                                     RESET
                                 </button>
                             </div>
 
-                            <div style={{
-                                background: (netStatus === 'STOP' || activeIssue !== 'NONE') ? '#fee2e2' : '#dcfce7',
-                                padding: '1.5rem',
-                                borderRadius: '16px',
-                                border: `2px solid ${(netStatus === 'STOP' || activeIssue !== 'NONE') ? '#ef4444' : '#22c55e'}`,
-                                animation: (netStatus === 'STOP' || activeIssue !== 'NONE') ? 'pulse 1s infinite' : 'none'
-                            }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: (netStatus === 'STOP' || activeIssue !== 'NONE') ? '#991b1b' : '#166534' }}>
-                                    {(netStatus === 'STOP' || activeIssue !== 'NONE') ? `⛔ ${activeIssue !== 'NONE' ? activeIssue : 'STOP - OVERLOAD'}` : '✅ SAFE TO PULL'}
+                            <div className={`p-6 rounded-2xl border-2 transition-colors ${(netStatus === 'STOP' || activeIssue !== 'NONE')
+                                ? 'bg-red-500/20 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-pulse'
+                                : 'bg-green-500/20 border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.1)]'
+                                }`}>
+                                <div className={`text-2xl font-bold uppercase tracking-widest ${(netStatus === 'STOP' || activeIssue !== 'NONE') ? 'text-red-400' : 'text-green-400'
+                                    }`}>
+                                    {(netStatus === 'STOP' || activeIssue !== 'NONE') ? (
+                                        <div className="flex items-center justify-center gap-2">
+                                            <ShieldAlert size={28} />
+                                            <span>{activeIssue !== 'NONE' ? activeIssue : 'STOP'}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center gap-2 text-white">
+                                            <Anchor size={28} className="text-green-400" />
+                                            <span>SAFE TO PULL</span>
+                                        </div>
+                                    )}
                                 </div>
                                 {(netStatus === 'STOP' || activeIssue !== 'NONE') && (
-                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#b91c1c', fontWeight: 600 }}>
-                                        {activeIssue === 'TANGLE' ? '⚠️ NET ENTAGLEMENT DETECTED - BACK DOWN VESSEL!' :
-                                            activeIssue === 'TEAR' ? '⚠️ NET TEARING DETECTED - HAUL IN IMMEDIATELY!' :
-                                                '⚠️ LOAD EXCEEDS 50KG - STOP MOTOR IMMEDIATELY!'}
+                                    <p className="m-0 mt-3 text-xs font-semibold text-red-300 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+                                        {activeIssue === 'TANGLE' ? 'Entanglement detected - back down vessel!' :
+                                            activeIssue === 'TEAR' ? 'Net tearing detected - haul in immediately!' :
+                                                'Load exceeds 50kg - stop motor immediately!'}
                                     </p>
                                 )}
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                            <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Peak Load Today</div>
-                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>54 kg</div>
+                        <div className="mt-8 grid grid-cols-2 gap-6">
+                            <div className="glass-card p-6 border-white/5 hover:border-neon-400/30 transition-colors">
+                                <div className="text-xs text-white/50 uppercase tracking-widest font-bold mb-2">Peak Load Today</div>
+                                <div className="text-3xl font-bold text-white drop-shadow-sm">54 <span className="text-xl text-white/50">kg</span></div>
                             </div>
-                            <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Pulling Duration</div>
-                                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>12 min</div>
+                            <div className="glass-card p-6 border-white/5 hover:border-sea-400/30 transition-colors">
+                                <div className="text-xs text-white/50 uppercase tracking-widest font-bold mb-2">Pulling Duration</div>
+                                <div className="text-3xl font-bold text-white drop-shadow-sm">12 <span className="text-xl text-white/50">min</span></div>
                             </div>
                         </div>
                     </div>
                 )}
+
                 {activeView === "advice" && (
-                    <div style={{ padding: '1rem' }} className="animate-fade-in">
-                        <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                            <button onClick={() => setActiveView('home')} style={{ background: 'none', border: 'none', fontSize: '1.25rem' }}>←</button>
-                            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>TODAY'S ADVICE</h2>
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">Today's Advice</h2>
                         </header>
-                        <div style={{ background: 'white', padding: '2rem', borderRadius: '24px', textAlign: 'center', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🗼</div>
-                            <p style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', lineHeight: 1.4 }}>
+
+                        <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-10 text-center relative overflow-hidden group transition-all hover:bg-white/15">
+                            <div className="absolute -top-20 -right-20 w-40 h-40 bg-neon-400/10 rounded-full blur-3xl group-hover:bg-neon-400/20 transition-all"></div>
+                            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-sea-500/10 rounded-full blur-3xl group-hover:bg-sea-500/20 transition-all"></div>
+
+                            <div className="bg-ocean-800/50 p-6 rounded-full inline-block mb-6 shadow-neon-glow-sm group-hover:scale-110 group-hover:shadow-neon-glow-lg transition-all">
+                                <Lightbulb size={64} className="text-neon-400 drop-shadow-[0_0_15px_rgba(0,245,255,0.4)]" />
+                            </div>
+                            <p className="text-xl font-semibold text-white leading-relaxed mb-10 max-w-lg mx-auto tracking-wide">
                                 {getAdviceSummary()}
                             </p>
-                            <div style={{ height: '10px', background: 'linear-gradient(to right, #22c55e, #eab308, #ef4444)', borderRadius: '5px', margin: '2rem 0', position: 'relative' }}>
-                                <div style={{ position: 'absolute', top: -10, left: weather === 'Stormy' ? '90%' : '20%', fontSize: '1.5rem' }}>📍</div>
+
+                            <div className="h-2 bg-gradient-to-r from-green-400 via-yellow-400 to-red-500 rounded-full my-8 relative max-w-lg mx-auto shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                                <div className="absolute -top-4 w-8 h-8 flex items-center justify-center text-xl transition-all duration-1000 animate-bounce" style={{ left: weather === 'Stormy' ? '90%' : '20%' }}>📍</div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, color: '#64748b' }}>
+
+                            <div className="flex justify-between text-xs font-bold text-white/50 tracking-widest max-w-lg mx-auto">
                                 <span>LOW RISK</span>
                                 <span>HIGH RISK</span>
                             </div>
                         </div>
                     </div>
                 )}
+
+                {activeView === "profile" && (
+                    <div className="animate-fade-in px-4">
+                        <header className="flex items-center gap-4 mb-8">
+                            <button onClick={() => setActiveView('home')} className="bg-white/5 p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all">
+                                <ArrowLeft size={20} />
+                            </button>
+                            <h2 className="text-xl font-semibold text-white tracking-wide uppercase">My Profile</h2>
+                        </header>
+                        <div className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 p-8 text-center">
+                            <div className="w-24 h-24 bg-ocean-800 rounded-full mx-auto mb-6 border-2 border-neon-400 flex items-center justify-center overflow-hidden">
+                                <User size={48} className="text-neon-400" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-2 uppercase tracking-wide">Fisherman Dashboard</h3>
+                            <p className="text-white/50 text-sm mb-8 uppercase tracking-widest">Certified Member Since 2024</p>
+                            <button className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-semibold px-6 py-3 rounded-lg transition-all w-full uppercase tracking-widest text-xs">Log Out</button>
+                        </div>
+                    </div>
+                )}
             </main>
 
             {/* ---------- BOTTOM NAV ---------- */}
-            <nav style={styles.bottomNav}>
-                <div style={{ ...styles.navItem, ...(activeView === 'home' ? styles.activeNavItem : {}) }} onClick={() => setActiveView('home')}>
-                    <span style={{ fontSize: '1.5rem' }}>🏠</span>
-                    <span>Home</span>
+            <nav className="fixed bottom-0 left-0 right-0 glass-nav h-20 flex justify-around items-center border-t border-white/10 shadow-[0_-5px_15px_rgba(0,0,0,0.5)] z-[100] pb-2 sm:pb-0">
+                <div className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeView === 'home' ? 'text-neon-400 scale-110' : 'text-white/50 hover:text-white/80'}`} onClick={() => setActiveView('home')}>
+                    <Home size={24} className={activeView === 'home' ? 'drop-shadow-[0_0_8px_#00f5ff]' : ''} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Home</span>
                 </div>
-                <div style={{ ...styles.navItem, ...(activeView === 'upload' ? styles.activeNavItem : {}) }} onClick={() => setActiveView('upload')}>
-                    <span style={{ fontSize: '1.5rem' }}>➕</span>
-                    <span>Upload</span>
+                <div className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeView === 'upload' ? 'text-neon-400 scale-110' : 'text-white/50 hover:text-white/80'}`} onClick={() => setActiveView('upload')}>
+                    <Plus size={24} className={activeView === 'upload' ? 'drop-shadow-[0_0_8px_#00f5ff]' : ''} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Upload</span>
                 </div>
-                <div style={{ ...styles.navItem, ...(activeView === 'orders' ? styles.activeNavItem : {}) }} onClick={() => setActiveView('orders')}>
-                    <span style={{ fontSize: '1.5rem' }}>📋</span>
-                    <span>Orders</span>
+                <div className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeView === 'orders' ? 'text-neon-400 scale-110' : 'text-white/50 hover:text-white/80'}`} onClick={() => setActiveView('orders')}>
+                    <ClipboardList size={24} className={activeView === 'orders' ? 'drop-shadow-[0_0_8px_#00f5ff]' : ''} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Orders</span>
                 </div>
-                <div style={{ ...styles.navItem, ...(activeView === 'income' ? styles.activeNavItem : {}) }} onClick={() => setActiveView('income')}>
-                    <span style={{ fontSize: '1.5rem' }}>📊</span>
-                    <span>Income</span>
+                <div className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeView === 'income' ? 'text-neon-400 scale-110' : 'text-white/50 hover:text-white/80'}`} onClick={() => setActiveView('income')}>
+                    <BarChart3 size={24} className={activeView === 'income' ? 'drop-shadow-[0_0_8px_#00f5ff]' : ''} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Income</span>
                 </div>
-                <div style={{ ...styles.navItem, ...(activeView === 'schemes' ? styles.activeNavItem : {}) }} onClick={() => setActiveView('schemes')}>
-                    <span style={{ fontSize: '1.5rem' }}>⚖️</span>
-                    <span>Schemes</span>
+                <div className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeView === 'schemes' ? 'text-neon-400 scale-110' : 'text-white/50 hover:text-white/80'}`} onClick={() => setActiveView('schemes')}>
+                    <ScrollText size={24} className={activeView === 'schemes' ? 'drop-shadow-[0_0_8px_#00f5ff]' : ''} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Schemes</span>
+                </div>
+                <div className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeView === 'profile' ? 'text-neon-400 scale-110' : 'text-white/50 hover:text-white/80'}`} onClick={() => setActiveView('profile')}>
+                    <User size={24} className={activeView === 'profile' ? 'drop-shadow-[0_0_8px_#00f5ff]' : ''} />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Profile</span>
                 </div>
             </nav>
         </div>
