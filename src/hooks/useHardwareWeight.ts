@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { HARDWARE_WS_URL } from '../config';
+
 
 interface HardwareData {
     weight: number;
@@ -28,7 +30,11 @@ export const useHardwareWeight = () => {
             wsRef.current = null;
         }
 
-        const wsUrl = 'ws://localhost:5001/hardware';
+        // Production WebSocket URL if deployed, otherwise fallback to local bridge
+        const wsUrl = HARDWARE_WS_URL;
+
+
+        console.log(`🔗 Attempting connection to ${wsUrl}`);
 
         try {
             const ws = new WebSocket(wsUrl);
@@ -40,6 +46,7 @@ export const useHardwareWeight = () => {
                     return;
                 }
                 setIsOffline(false);
+                console.log('✅ Hardware stream connected');
             };
 
             ws.onmessage = (event) => {
@@ -51,7 +58,7 @@ export const useHardwareWeight = () => {
                     // Requirement: Ensure stress value comes from hardware WebSocket
                     // If the server doesn't send "stress", we can map it from alert or thresholds
                     const stressValue = parsed.stress || (
-                        (parsed.weight > 50 || parsed.temperature > 35 || parsed.salinity > 40 || parsed.alert)
+                        (parsed.weight > 50 || parsed.alert)
                             ? "HIGH"
                             : "NORMAL"
                     );
@@ -72,6 +79,7 @@ export const useHardwareWeight = () => {
 
             ws.onclose = () => {
                 if (isUnmounting.current) return;
+                console.warn('🔌 Hardware stream disconnected');
                 setIsOffline(true);
                 wsRef.current = null;
                 if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);

@@ -22,7 +22,18 @@ router.post('/update', (req, res) => {
         timestamp: timestamp || new Date().toISOString()
     };
 
-    res.status(200).json({ success: true, message: 'Data updated' });
+    // Broadcast to all cloud WebSocket clients
+    const wss = req.app.get('wss');
+    if (wss) {
+        const payload = JSON.stringify(latestHardwareData);
+        wss.clients.forEach((client) => {
+            if (client.readyState === 1) { // 1 = OPEN
+                client.send(payload);
+            }
+        });
+    }
+
+    res.status(200).json({ success: true, message: 'Data updated and broadcasted' });
 });
 
 // @desc    Get latest hardware data
@@ -33,3 +44,4 @@ router.get('/latest', (req, res) => {
 });
 
 export default router;
+

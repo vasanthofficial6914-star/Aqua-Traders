@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send } from 'lucide-react';
+import { API_BASE_URL } from '../config';
+
 
 interface Message {
     sender: 'ai' | 'user';
@@ -77,11 +79,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ role }) => {
         setInput('');
 
         try {
-            const response = await fetch('http://localhost:3001/api/chat', {
+            const response = await fetch(`${API_BASE_URL}/services/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ messages: newMessages, role })
             });
+
             const data = await response.json();
             setMessages([...newMessages, { sender: 'ai', text: data.text }]);
         } catch (error) {

@@ -6,6 +6,8 @@ import OrderTracking from './OrderTracking';
 import OrderChat from './OrderChat';
 
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
+
 
 const CustomerDashboard: React.FC<{ defaultTab?: 'listings' | 'orders' }> = ({ defaultTab = 'listings' }) => {
     const [activeTab, setActiveTab] = useState<'listings' | 'orders'>(defaultTab);
@@ -47,7 +49,7 @@ const CustomerDashboard: React.FC<{ defaultTab?: 'listings' | 'orders' }> = ({ d
     const fetchOrders = async () => {
         try {
             const token = localStorage.getItem('fisherDirectToken');
-            const res = await axios.get('http://localhost:5000/api/orders/myorders', {
+            const res = await axios.get(`${API_BASE_URL}/orders/myorders`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setOrders(res.data);
@@ -58,7 +60,8 @@ const CustomerDashboard: React.FC<{ defaultTab?: 'listings' | 'orders' }> = ({ d
 
     const fetchListings = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/fish/list');
+            const res = await fetch(`${API_BASE_URL}/fish/list`);
+
             if (res.ok) {
                 const data = await res.json();
                 const mappedListings = data.map((item: any) => ({
@@ -70,8 +73,9 @@ const CustomerDashboard: React.FC<{ defaultTab?: 'listings' | 'orders' }> = ({ d
                     weight: item.quantity > 0 ? `${item.quantity}kg available` : 'Sold Out',
                     availableQuantity: item.quantity,
                     status: item.quantity > 0 ? item.status : 'stock_out',
-                    imageUrl: item.imageUrl ? `http://localhost:5000${item.imageUrl}` : '',
+                    imageUrl: item.imageUrl ? `${API_BASE_URL.replace('/api', '')}${item.imageUrl}` : '',
                     image: item.imageUrl ? '' : '🐟'
+
                 }));
                 setListings(mappedListings);
             }

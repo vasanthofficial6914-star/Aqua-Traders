@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
+
 
 const OrderPage: React.FC = () => {
     const location = useLocation();
@@ -36,7 +38,7 @@ const OrderPage: React.FC = () => {
 
         try {
             const token = localStorage.getItem('fisherDirectToken');
-            const res = await fetch('http://localhost:5000/api/orders/buy', {
+            const res = await fetch(`${API_BASE_URL}/orders/buy`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

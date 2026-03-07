@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isSeasonalRegulationActive } from "../utils/dateUtils";
 import { useHardwareWeight } from "../hooks/useHardwareWeight";
+import { API_BASE_URL } from "../config";
 import {
     Fish,
     ClipboardList,
@@ -95,7 +96,7 @@ const FishermanDashboard: React.FC = () => {
             if (currentIssue !== 'NONE' && (now - lastAlertSent > 300000)) {
                 try {
                     console.log(`Triggering ${currentIssue} alert...`);
-                    const response = await fetch('http://localhost:3001/api/alert', {
+                    const response = await fetch(`${API_BASE_URL}/services/alert`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -133,7 +134,7 @@ const FishermanDashboard: React.FC = () => {
     const fetchMyListings = async () => {
         try {
             const token = localStorage.getItem('fisherDirectToken');
-            const res = await fetch('http://localhost:5000/api/fish/mylistings', {
+            const res = await fetch(`${API_BASE_URL}/fish/mylistings`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -149,7 +150,7 @@ const FishermanDashboard: React.FC = () => {
         if (!window.confirm("Are you sure you want to delete this listing?")) return;
         try {
             const token = localStorage.getItem('fisherDirectToken');
-            const res = await fetch(`http://localhost:5000/api/fish/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/fish/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -177,7 +178,7 @@ const FishermanDashboard: React.FC = () => {
         try {
             console.log(`Updating stock status for ${id} to ${newStatus}...`);
             const token = localStorage.getItem('fisherDirectToken');
-            const res = await fetch(`http://localhost:5000/api/fish/${id}/status`, {
+            const res = await fetch(`${API_BASE_URL}/fish/${id}/status`, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -458,7 +459,7 @@ const FishermanDashboard: React.FC = () => {
                                     <div key={listing._id} className="rounded-xl bg-white/10 backdrop-blur border border-cyan-500/30 overflow-hidden flex group transition-all hover:bg-white/15">
                                         <div className="w-32 h-32 bg-ocean-800/50 flex items-center justify-center border-r border-white/5 overflow-hidden">
                                             {listing.imageUrl ? (
-                                                <img src={`http://localhost:5000${listing.imageUrl}`} alt={listing.fishType} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                <img src={`${API_BASE_URL.replace('/api', '')}${listing.imageUrl}`} alt={listing.fishType} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                             ) : <Fish size={32} className="opacity-20" />}
                                         </div>
                                         <div className="p-4 flex-1 flex flex-col justify-between">
@@ -525,7 +526,7 @@ const FishermanDashboard: React.FC = () => {
 
                             try {
                                 const token = localStorage.getItem('fisherDirectToken');
-                                const res = await fetch('http://localhost:5000/api/fish/upload', {
+                                const res = await fetch(`${API_BASE_URL}/fish/upload`, {
                                     method: 'POST',
                                     headers: {
                                         'Authorization': `Bearer ${token}`
@@ -620,7 +621,7 @@ const FishermanDashboard: React.FC = () => {
                                                 <div className="flex">
                                                     <div className="w-24 h-24 bg-ocean-800/50 flex items-center justify-center border-r border-white/5 shrink-0 overflow-hidden">
                                                         {listing.imageUrl ? (
-                                                            <img src={`http://localhost:5000${listing.imageUrl}`} alt={listing.fishType} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                            <img src={`${API_BASE_URL.replace('/api', '')}${listing.imageUrl}`} alt={listing.fishType} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                                                         ) : <Fish size={24} className="opacity-20" />}
                                                     </div>
                                                     <div className="p-4 flex-1">
