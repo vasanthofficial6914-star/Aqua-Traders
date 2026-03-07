@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useHardwareWeight } from '../hooks/useHardwareWeight';
-import { Scale, Thermometer, Droplets, Anchor, AlertTriangle, BellRing, ShieldCheck, Volume2, VolumeX, RefreshCw } from "lucide-react";
+import { Scale, Thermometer, Droplets, AlertTriangle, BellRing, ShieldCheck } from "lucide-react";
 
 const HardwareMonitor: React.FC = () => {
     // Stress value is provided by the custom hook connected to the hardware WebSocket
