@@ -43,8 +43,8 @@ const Signup: React.FC = () => {
             await signupUser({ name, email, phone, password, role });
             // Successful signup redirects to login
             navigate('/');
-        } catch (err: any) {
-            setError(err.message || 'Could not connect to the server. Please try again later.');
+        } catch (error) {
+            setError("Could not connect to the server. Please try again later.");
         } finally {
             setLoading(false);
         }

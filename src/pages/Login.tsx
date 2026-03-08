@@ -45,8 +45,8 @@ const Login: React.FC = () => {
             } else if (userRole === 'admin') {
                 navigate('/admindashboard');
             }
-        } catch (err: any) {
-            setError(err.message || 'Could not connect to the server. Please try again later.');
+        } catch (error) {
+            setError("Could not connect to the server. Please try again later.");
         } finally {
             setLoading(false);
         }
