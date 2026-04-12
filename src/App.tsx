@@ -36,7 +36,7 @@ const Navigation = () => {
         className="font-extrabold text-2xl text-neon-400 cursor-pointer drop-shadow-[0_0_8px_rgba(0,245,255,0.8)] hover:scale-105 transition-transform"
         onClick={handleLogoClick}
       >
-        FisherDirect
+        மீனவன்
       </div>
       <div className="flex gap-6 items-center">
         {location.pathname !== '/schemes' && (
@@ -102,7 +102,7 @@ const AppContent = () => {
       <footer className="relative mt-auto z-10">
         <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-neon-400/50 to-transparent"></div>
         <div className="p-8 bg-ocean-900/80 backdrop-blur-md text-white text-center">
-          <p className="text-white/80 text-sm font-medium tracking-wide">© 2026 FisherDirect. Connecting the Ocean Directly to Your Kitchen.</p>
+          <p className="text-white/80 text-sm font-medium tracking-wide">© 2026 மீனவன். Empowering Fishermen, Delivering Freshness.</p>
         </div>
       </footer>
 

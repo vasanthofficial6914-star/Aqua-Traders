@@ -92,13 +92,13 @@ router.post('/chat', async (req, res) => {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer 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`,
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 "HTTP-Referer": "https://fisher-man-deployed.vercel.app", // Placeholder
                 "X-Title": "FisherDirect AI",
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "model": "google/gemini-2.0-flash-lite-preview-02-05:free",
+                "model": "google/gemini-2.0-pro-exp-02-05:free",
                 "messages": [
                     { "role": "system", "content": systemPrompt },
                     ...messages.map(m => ({
@@ -110,10 +110,15 @@ router.post('/chat', async (req, res) => {
         });
 
         const data = await response.json();
+        if (data.error) {
+            console.error('OpenRouter API returned error:', data.error.message);
+            return res.status(data.error.code || 400).json({ text: `OpenRouter API returned an error: ${data.error.message}` });
+        }
+        
         const aiMessage = data.choices[0].message.content;
         res.json({ text: aiMessage });
     } catch (error) {
-        console.error('OpenRouter API Error:', error);
+        console.error('OpenRouter Internal Error:', error);
         res.status(500).json({ text: "I'm having a bit of trouble connecting to the ocean depths (API Error). Try again in a moment!" });
     }
 });

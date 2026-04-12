@@ -3,15 +3,6 @@ import React from 'react';
 const GovernmentSchemes: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     const schemes = [
         {
-            id: 'pmmsy',
-            title: 'Pradhan Mantri Matsya Sampada Yojana (PMMSY)',
-            category: 'Infrastructure & Growth',
-            description: 'This is the flagship scheme for the holistic development of the fisheries sector, providing financial assistance for boats, nets, and infrastructure.',
-            bestFor: 'Subsidies on boats, nets, and aquaculture, and for forming Fishermen Producer Organizations (FFPOs).',
-            benefits: 'Up to 40-60% subsidy for fishermen and cooperatives.',
-            link: 'https://www.pmmsy.dof.gov.in/'
-        },
-        {
             id: 'kcc',
             title: 'Kisan Credit Card (KCC) for Fishermen',
             category: 'Credit & Finance',

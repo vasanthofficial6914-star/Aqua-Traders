@@ -107,12 +107,56 @@ app.post('/api/chat', async (req, res) => {
             })
         });
 
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
         const data = await response.json();
-        const aiMessage = data.choices[0].message.content;
-        res.json({ text: aiMessage });
+        
+        if (data.choices && data.choices.length > 0) {
+            const aiMessage = data.choices[0].message.content;
+            return res.json({ text: aiMessage });
+        } else {
+            throw new Error("Invalid API response format");
+        }
     } catch (error) {
-        console.error('OpenRouter API Error:', error);
-        res.status(500).json({ text: "I'm having a bit of trouble connecting to the ocean depths (API Error). Try again in a moment!" });
+        console.error('OpenRouter API Error - Falling back to local dataset:', error.message);
+        
+        const localDataset = {
+            fisherman: [
+                { keywords: ['weather', 'sea', 'condition', 'storm', 'wind', 'rain', 'wave'], response: "Captain, always check the local meteorological reports. If the swelling is high or winds are picking up, it's safer to stay docked. Safety first!" },
+                { keywords: ['price', 'pricing', 'sell', 'market', 'money', 'cost', 'rate'], response: "Market prices fluctuate, but fresh catches like Tuna and Mackerel usually fetch a premium at the local harbor if you sell straight to the consumer." },
+                { keywords: ['net', 'maintenance', 'tear', 'tangle', 'repair', 'gear'], response: "Inspect your nets before dropping them. A small tear now can mean a lost catch later. Wash them with fresh water after every trip to prevent salt damage." },
+                { keywords: ['sustainable', 'overfishing', 'rules', 'quota', 'limit'], response: "Remember, ethical fishing ensures our oceans thrive. Avoid overfished areas, let the juveniles go, and respect the local catch quotas." },
+                { keywords: ['hello', 'hi', 'hey', 'greetings', 'ahoy'], response: "Ahoy Captain! How can I assist you with your voyage or gear today?" },
+                { keywords: [], response: "Ahoy! The network is a bit stormy right now (using local backup). Make sure your gear is tight and stay safe out there. Do you need advice on nets, weather, or pricing?" }
+            ],
+            customer: [
+                { keywords: ['fresh', 'buy', 'seafood', 'fish', 'where', 'find'], response: "Welcome! To find the freshest catch, look for clear eyes, bright red gills, and a smell of the ocean (not fishiness). Buying direct from FisherDirect guarantees quality!" },
+                { keywords: ['recipe', 'cook', 'prepare', 'dish', 'fry', 'bake', 'grill'], response: "A quick pan-sear with garlic, butter, and a squeeze of lemon is perfect for fresh white fish. Don't overcook it—it should just be opaque and flaky." },
+                { keywords: ['local', 'support', 'fisherman', 'community', 'help'], response: "Buying direct from FisherDirect means better prices for the captains and much fresher food for your table. You're supporting independent fleets directly!" },
+                { keywords: ['hello', 'hi', 'hey', 'greetings'], response: "Hello there! Looking for some fresh seafood recommendations or recipes today?" },
+                { keywords: [], response: "Hello! Our connection is a bit like a tangled net right now (local backup). But remember: always buy local and fresh! Are you looking for recipes or buying advice?" }
+            ]
+        };
+
+        const lastUserMessage = messages.slice().reverse().find(m => m.sender === 'user')?.text?.toLowerCase() || '';
+        const dataset = role === 'fisherman' ? localDataset.fisherman : localDataset.customer;
+        
+        let fallbackResponse = "";
+        for (const item of dataset) {
+            if (item.keywords.length > 0 && item.keywords.some(kw => lastUserMessage.includes(kw))) {
+                fallbackResponse = item.response;
+                break;
+            }
+        }
+        
+        if (!fallbackResponse) {
+            fallbackResponse = dataset.find(item => item.keywords.length === 0).response;
+        }
+
+        // Return a successful 200 response with the fallback text
+        res.json({ text: fallbackResponse });
     }
 });
 

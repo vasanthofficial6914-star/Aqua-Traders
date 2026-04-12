@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 async function sendMail(to, subject, message) {
     try {
         await transporter.sendMail({
-            from: '"FisherDirect System" <gemboyvasa1496@gmail.com>',
+            from: '"மீனவன் System" <gemboyvasa1496@gmail.com>',
             to: to,
             subject: subject,
             html: message

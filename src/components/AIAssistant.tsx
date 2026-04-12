@@ -21,10 +21,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ role }) => {
 
     useEffect(() => {
         const welcomeMessage = role === 'fisherman'
-            ? "Namaste Captain! 🚢 I'm your AI Catch Assistant. Need advice on pricing, weather, or net maintenance?"
+            ? "Vanakkam Captain! 🚢 I'm your AI Catch Assistant. Need advice on pricing, weather, or net maintenance?"
             : role === 'customer'
                 ? "Hello! 🌊 I'm your Fresh Guide. Looking for the best catch today or need a recipe for Seer Fish?"
-                : "Welcome to FisherDirect! 🛥️ How can I help you today?";
+                : "Welcome to மீனவன்! 🛥️ How can I help you today?";
 
         setMessages([{ sender: 'ai', text: welcomeMessage }]);
     }, [role]);

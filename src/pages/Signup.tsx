@@ -57,7 +57,7 @@ const Signup: React.FC = () => {
 
                 <div className="text-center mb-8">
                     <div className="text-4xl mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] inline-block animate-float" style={{ animationDelay: '0.5s' }}>⚓</div>
-                    <h1 className="text-3xl font-black text-white drop-shadow-md mb-2 tracking-tight">Join <span className="text-sea-400">FisherDirect</span></h1>
+                    <h1 className="text-3xl font-black text-white drop-shadow-md mb-2 tracking-tight">Join <span className="text-sea-400">மீனவன்</span></h1>
                     <p className="text-sm font-bold text-white/50 uppercase tracking-widest">Create Your Account</p>
                 </div>
 

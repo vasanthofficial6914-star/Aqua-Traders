@@ -82,7 +82,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ product, onBack, onAddT
 
                     <p className="text-white/70 leading-relaxed mb-10 text-sm">
                         This {product.type.toLowerCase()} is sourced directly from local fishermen in {product.location}.
-                        Experience the premium quality and absolute freshness that FisherDirect brings from the turbulent depths straight to your table.
+                        Experience the premium quality and absolute freshness that மீனவன் brings from the turbulent depths straight to your table.
                     </p>
 
                     <div className="flex sm:flex-row flex-col gap-4">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { isSeasonalRegulationActive } from "../utils/dateUtils";
-import { useHardwareWeight } from "../hooks/useHardwareWeight";
+import { useArduinoSerial } from "../hooks/useArduinoSerial";
 import API_BASE_URL from "../config/api";
 import {
     Fish,
@@ -43,14 +43,14 @@ const FishermanDashboard: React.FC = () => {
 
     // ---------- NET MONITOR STATE ----------
     const [netLoad, setNetLoad] = useState(0);
-    const [netStatus, setNetStatus] = useState<'SAFE' | 'STOP'>('SAFE');
+    const [netStatus, setNetStatus] = useState<'SAFE' | 'WARNING' | 'OVERLOAD'>('SAFE');
     const [isManualMode, setIsManualMode] = useState(false);
     const [lastAlertSent, setLastAlertSent] = useState<number>(0);
     const [activeIssue, setActiveIssue] = useState<'NONE' | 'OVERLOAD' | 'TANGLE' | 'TEAR'>('NONE');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { weight: hardwareWeight, isOffline: hardwareOffline } = useHardwareWeight();
+    const { weight: serialWeight, status: serialStatus, stress: serialStress, isConnected: hardwareConnected, connect: connectHardware } = useArduinoSerial();
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -65,15 +65,33 @@ const FishermanDashboard: React.FC = () => {
 
     // Sync state with hardware data
     useEffect(() => {
-        if (!isManualMode && !hardwareOffline && hardwareWeight !== null) {
-            setNetLoad(hardwareWeight);
-            setNetStatus(hardwareWeight >= 50 ? 'STOP' : 'SAFE');
+        if (!isManualMode && hardwareConnected && serialWeight !== null) {
+            setNetLoad(serialWeight);
+            setNetStatus(serialStatus);
+            
+            if (serialStatus === 'OVERLOAD') {
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                const audio = new Audio('/beep.mp3');
+                audio.play().catch(() => {
+                    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                    if (ctx.state === 'running') {
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(800, ctx.currentTime);
+                        osc.connect(ctx.destination);
+                        osc.start();
+                        osc.stop(ctx.currentTime + 0.3);
+                    }
+                });
+            }
         }
-    }, [hardwareWeight, hardwareOffline, isManualMode]);
+    }, [serialWeight, serialStatus, hardwareConnected, isManualMode]);
 
     const updateManualLoad = (val: number) => {
         setNetLoad(val);
-        setNetStatus(val >= 50 ? 'STOP' : 'SAFE');
+        if (val < 40) setNetStatus('SAFE');
+        else if (val < 50) setNetStatus('WARNING');
+        else setNetStatus('OVERLOAD');
     };
 
     const getStressLevel = (load: number) => {
@@ -89,7 +107,7 @@ const FishermanDashboard: React.FC = () => {
 
             // Determine the issue type
             let currentIssue: 'NONE' | 'OVERLOAD' | 'TANGLE' | 'TEAR' = 'NONE';
-            if (netStatus === 'STOP') currentIssue = 'OVERLOAD';
+            if (netStatus === 'OVERLOAD') currentIssue = 'OVERLOAD';
             if (activeIssue !== 'NONE') currentIssue = activeIssue;
 
             // 5 minute cooldown (300000ms)
@@ -217,7 +235,7 @@ const FishermanDashboard: React.FC = () => {
     // ---------- UI HELPERS ----------
     const t = {
         en: {
-            title: "FisherDirect",
+            title: "மீனவன்",
             welcome: "Captain's Dashboard",
             advice_title: "TODAY'S SMART ADVICE",
             upload: "Upload Fish",
@@ -261,6 +279,12 @@ const FishermanDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <Fish className="text-neon-400 drop-shadow-[0_0_8px_rgba(0,245,255,0.6)]" size={32} />
                     <h1 className="text-xl font-semibold text-white tracking-wide drop-shadow-sm">{currentT.title}</h1>
+                    <div className="hidden md:flex items-center gap-2 ml-4 px-3 py-1 bg-white/5 rounded-full border border-white/10">
+                        <div className={`w-2 h-2 rounded-full ${hardwareConnected ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`}></div>
+                        <span className="text-xs font-semibold text-white/70">
+                            {hardwareConnected ? 'Hardware Connected' : 'Hardware Disconnected'}
+                        </span>
+                    </div>
                 </div>
                 <div className="flex gap-4 items-center">
                     <div className={`w-3 h-3 rounded-full shadow-[0_0_10px_currentColor] ${isOnline ? 'bg-neon-400 text-neon-400' : 'bg-red-500 text-red-500'}`}></div>
@@ -294,22 +318,22 @@ const FishermanDashboard: React.FC = () => {
                         </div>
 
                         <div className="w-full mb-8" style={{
-                            background: netStatus === 'STOP' ? '#fee2e2' : '#dcfce7',
+                            background: netStatus === 'OVERLOAD' ? '#fee2e2' : netStatus === 'WARNING' ? '#ffedd5' : '#dcfce7',
                             padding: '1.5rem',
                             borderRadius: '16px',
-                            border: `2px solid ${netStatus === 'STOP' ? '#ef4444' : '#22c55e'}`,
+                            border: `2px solid ${netStatus === 'OVERLOAD' ? '#ef4444' : netStatus === 'WARNING' ? '#f97316' : '#22c55e'}`,
                             display: 'flex',
                             flexDirection: 'column',
                             gap: '0.5rem',
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                            animation: netStatus === 'STOP' ? 'pulse 1.5s infinite' : 'none'
+                            animation: netStatus === 'OVERLOAD' ? 'pulse 1.5s infinite' : 'none'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>SMART NET MONITOR</span>
                                 <div style={{
                                     padding: '0.2rem 0.6rem',
                                     borderRadius: '12px',
-                                    backgroundColor: netStatus === 'STOP' ? '#ef4444' : '#22c55e',
+                                    backgroundColor: netStatus === 'OVERLOAD' ? '#ef4444' : netStatus === 'WARNING' ? '#f97316' : '#22c55e',
                                     color: 'white',
                                     fontSize: '0.7rem',
                                     fontWeight: 800
@@ -332,19 +356,26 @@ const FishermanDashboard: React.FC = () => {
                                             <span style={{ fontSize: '1rem', fontWeight: 700 }}>kg</span>
                                         </div>
                                     ) : (
-                                        <div style={{ fontSize: hardwareOffline ? '1.2rem' : '2rem', fontWeight: 900, color: '#1e293b' }}>
-                                            {hardwareOffline ? (
-                                                <span style={{ color: '#ef4444' }}>Hardware Offline</span>
+                                        <div style={{ fontSize: !hardwareConnected ? '1.2rem' : '2rem', fontWeight: 900, color: '#1e293b' }}>
+                                            {!hardwareConnected ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                                    <span style={{ color: '#64748b', fontSize: '1rem' }}>Waiting for hardware...</span>
+                                                    <button onClick={connectHardware} style={{ background: '#0ea5e9', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 4px rgba(14,165,233,0.3)' }}>
+                                                        CONNECT HARDWARE
+                                                    </button>
+                                                </div>
                                             ) : (
-                                                hardwareWeight ? `${hardwareWeight} kg` : "Waiting for hardware..."
+                                                serialWeight !== null ? `${serialWeight} kg` : (
+                                                    <span style={{ color: '#64748b', fontSize: '1rem' }}>Listening to sensor...</span>
+                                                )
                                             )}
                                         </div>
                                     )}
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>STRESS</div>
-                                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: netLoad >= 50 ? '#ef4444' : '#1e293b' }}>
-                                        {hardwareOffline ? '---' : getStressLevel(netLoad)}
+                                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: netLoad >= 50 ? '#ef4444' : netLoad >= 40 ? '#f97316' : '#1e293b' }}>
+                                        {!hardwareConnected ? '---' : (!isManualMode ? serialStress : getStressLevel(netLoad))}
                                     </div>
                                 </div>
                             </div>
@@ -366,9 +397,9 @@ const FishermanDashboard: React.FC = () => {
                                 >
                                     {isManualMode ? 'RESUME LIVE' : 'MANUAL INPUT'}
                                 </button>
-                                {netStatus === 'STOP' && (
-                                    <div style={{ flex: 3, color: '#b91c1c', fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        ⚠ PULL NET NOW!
+                                {netStatus === 'OVERLOAD' && (
+                                    <div style={{ flex: 3, color: '#b91c1c', fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 1s infinite' }}>
+                                        ⚠ OVERLOAD - PULL NET NOW!
                                     </div>
                                 )}
                             </div>
@@ -806,8 +837,8 @@ const FishermanDashboard: React.FC = () => {
                                     <span className="text-4xl text-white/50 font-bold">kg</span>
                                 </div>
                             ) : (
-                                <div className={`text-7xl font-black drop-shadow-lg my-8 ${netStatus === 'STOP' ? 'text-red-500 [text-shadow:0_0_20px_rgba(239,68,68,0.5)]' : 'text-white'}`}>
-                                    {netLoad}<span className="text-3xl text-white/50 ml-2 font-bold">kg</span>
+                                <div className={`text-7xl font-black drop-shadow-lg my-8 ${netStatus === 'OVERLOAD' ? 'text-red-500 [text-shadow:0_0_20px_rgba(239,68,68,0.5)]' : netStatus === 'WARNING' ? 'text-orange-400 [text-shadow:0_0_20px_rgba(249,115,22,0.5)]' : 'text-white'}`}>
+                                    {hardwareOffline ? '--' : netLoad}<span className="text-3xl text-white/50 ml-2 font-bold">kg</span>
                                 </div>
                             )}
 
@@ -856,13 +887,13 @@ const FishermanDashboard: React.FC = () => {
                                 </button>
                             </div>
 
-                            <div className={`p-6 rounded-2xl border-2 transition-colors ${(netStatus === 'STOP' || activeIssue !== 'NONE')
+                            <div className={`p-6 rounded-2xl border-2 transition-colors ${(netStatus === 'OVERLOAD' || activeIssue !== 'NONE')
                                 ? 'bg-red-500/20 border-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)] animate-pulse'
                                 : 'bg-green-500/20 border-green-500/50 shadow-[0_0_30px_rgba(34,197,94,0.1)]'
                                 }`}>
-                                <div className={`text-2xl font-bold uppercase tracking-widest ${(netStatus === 'STOP' || activeIssue !== 'NONE') ? 'text-red-400' : 'text-green-400'
+                                <div className={`text-2xl font-bold uppercase tracking-widest ${(netStatus === 'OVERLOAD' || activeIssue !== 'NONE') ? 'text-red-400' : 'text-green-400'
                                     }`}>
-                                    {(netStatus === 'STOP' || activeIssue !== 'NONE') ? (
+                                    {(netStatus === 'OVERLOAD' || activeIssue !== 'NONE') ? (
                                         <div className="flex items-center justify-center gap-2">
                                             <ShieldAlert size={28} />
                                             <span>{activeIssue !== 'NONE' ? activeIssue : 'STOP'}</span>
@@ -874,7 +905,7 @@ const FishermanDashboard: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                {(netStatus === 'STOP' || activeIssue !== 'NONE') && (
+                                {(netStatus === 'OVERLOAD' || activeIssue !== 'NONE') && (
                                     <p className="m-0 mt-3 text-xs font-semibold text-red-300 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
                                         {activeIssue === 'TANGLE' ? 'Entanglement detected - back down vessel!' :
                                             activeIssue === 'TEAR' ? 'Net tearing detected - haul in immediately!' :
