@@ -50,7 +50,17 @@ const FishermanDashboard: React.FC = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const { weight: serialWeight, status: serialStatus, stress: serialStress, isConnected: hardwareConnected, connect: connectHardware } = useArduinoSerial();
+    const { 
+        weight: serialWeight, 
+        status: serialStatus, 
+        stress: serialStress, 
+        isConnected: hardwareConnected, 
+        connect: connectHardware,
+        disconnect,
+        rawData: serialRawData,
+        baudRate: currentBaud,
+        setBaudRate: updateBaud
+    } = useArduinoSerial();
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -326,10 +336,11 @@ const FishermanDashboard: React.FC = () => {
                             flexDirection: 'column',
                             gap: '0.5rem',
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                            animation: netStatus === 'OVERLOAD' ? 'pulse 1.5s infinite' : 'none'
+                            animation: netStatus === 'OVERLOAD' ? 'pulse 1.5s infinite' : 'none',
+                            color: '#1e293b'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>SMART NET MONITOR</span>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>SMART NET MONITOR (BETA)</span>
                                 <div style={{
                                     padding: '0.2rem 0.6rem',
                                     borderRadius: '12px',
@@ -348,61 +359,87 @@ const FishermanDashboard: React.FC = () => {
                                     {isManualMode ? (
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             <input
-                                                type="number"
+                                                type="range"
+                                                min="0"
+                                                max="100"
                                                 value={netLoad}
                                                 onChange={(e) => updateManualLoad(Number(e.target.value))}
-                                                style={{ width: '80px', fontSize: '1.5rem', padding: '0.2rem', borderRadius: '8px', border: '1px solid #0ea5e9' }}
+                                                style={{ width: '120px' }}
                                             />
-                                            <span style={{ fontSize: '1rem', fontWeight: 700 }}>kg</span>
+                                            <span style={{ fontSize: '1.5rem', fontWeight: 900 }}>{netLoad} kg</span>
                                         </div>
                                     ) : (
-                                        <div style={{ fontSize: !hardwareConnected ? '1.2rem' : '2rem', fontWeight: 900, color: '#1e293b' }}>
+                                        <div style={{ fontSize: !hardwareConnected ? '1.2rem' : '2rem', fontWeight: 900 }}>
                                             {!hardwareConnected ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
-                                                    <span style={{ color: '#64748b', fontSize: '1rem' }}>Waiting for hardware...</span>
-                                                    <button onClick={connectHardware} style={{ background: '#0ea5e9', color: 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 4px rgba(14,165,233,0.3)' }}>
-                                                        CONNECT HARDWARE
-                                                    </button>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.6rem' }}>
+                                                    <span style={{ color: '#64748b', fontSize: '1rem' }}>📡 Hardware Waiting...</span>
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            onClick={() => connectHardware(currentBaud)} 
+                                                            className="bg-ocean-700 hover:bg-ocean-800 text-white border-none px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all shadow-md"
+                                                        >
+                                                            CONNECT DEVICE
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                updateBaud(currentBaud === 9600 ? 115200 : 9600);
+                                                            }}
+                                                            className="bg-white/20 hover:bg-white/30 text-ocean-900 border-none px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all"
+                                                        >
+                                                            BAUD: {currentBaud}
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setIsManualMode(true);
+                                                                updateManualLoad(0);
+                                                            }} 
+                                                            className="bg-neon-400 hover:bg-neon-500 text-ocean-900 border-none px-4 py-2 rounded-lg text-xs font-extrabold cursor-pointer transition-all shadow-[0_0_10px_rgba(0,245,255,0.4)]"
+                                                        >
+                                                            SIMULATE 🔄
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ) : (
-                                                serialWeight !== null ? `${serialWeight} kg` : (
-                                                    <span style={{ color: '#64748b', fontSize: '1rem' }}>Listening to sensor...</span>
-                                                )
+                                                <div className="flex items-center gap-4">
+                                                    <span style={{ fontSize: '2rem', fontWeight: 900 }}>
+                                                        {serialWeight !== null ? `${serialWeight} kg` : '-- kg'}
+                                                    </span>
+                                                    <button onClick={() => disconnect()} className="bg-red-500 text-white text-[10px] px-2 py-1 rounded">DISCONNECT</button>
+                                                </div>
                                             )}
                                         </div>
                                     )}
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>STRESS</div>
-                                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: netLoad >= 50 ? '#ef4444' : netLoad >= 40 ? '#f97316' : '#1e293b' }}>
-                                        {!hardwareConnected ? '---' : (!isManualMode ? serialStress : getStressLevel(netLoad))}
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: netLoad >= 50 ? '#ef4444' : netLoad >= 40 ? '#f97316' : '#1e293b' }}>
+                                        {isManualMode ? getStressLevel(netLoad) : (hardwareConnected ? serialStress : 'N/A')}
                                     </div>
                                 </div>
                             </div>
-
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                <button
-                                    onClick={() => setIsManualMode(!isManualMode)}
-                                    style={{
-                                        flex: 2,
-                                        padding: '0.6rem',
-                                        borderRadius: '10px',
-                                        border: '1px solid #0ea5e9',
-                                        backgroundColor: isManualMode ? '#0ea5e9' : 'white',
-                                        color: isManualMode ? 'white' : '#0ea5e9',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {isManualMode ? 'RESUME LIVE' : 'MANUAL INPUT'}
-                                </button>
-                                {netStatus === 'OVERLOAD' && (
-                                    <div style={{ flex: 3, color: '#b91c1c', fontWeight: 700, fontSize: '0.8rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 1s infinite' }}>
-                                        ⚠ OVERLOAD - PULL NET NOW!
+                            
+                            {/* Raw Data Monitor */}
+                            {hardwareConnected && (
+                                <div style={{ marginTop: '10px', backgroundColor: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div style={{ fontSize: '10px', color: '#0ea5e9', fontWeight: 800, marginBottom: '5px' }}>📡 RAW DATA MONITOR</div>
+                                    <div style={{ maxHeight: '60px', overflowY: 'auto', fontSize: '10px', fontFamily: 'monospace', color: '#22c55e' }}>
+                                        {serialRawData.length > 0 ? serialRawData.map((line, i) => (
+                                            <div key={i}>&gt; {line}</div>
+                                        )) : <div style={{ color: '#64748b' }}>Waiting for data in {currentBaud} baud...</div>}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
+                            {isManualMode && (
+                                <p style={{ fontSize: '10px', color: '#b91c1c', fontWeight: 700, margin: '5px 0 0 0' }}>💡 SIMULATION ACTIVE: Slide the range to test alerts</p>
+                            )}
+
+                            {netStatus === 'OVERLOAD' && (
+                                <div style={{ marginTop: '10px', backgroundColor: '#ef4444', color: 'white', padding: '10px', borderRadius: '8px', fontWeight: 800, textAlign: 'center', animation: 'pulse 1s infinite' }}>
+                                    ⚠ CRITICAL OVERLOAD DETECTED
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-8">

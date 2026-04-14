@@ -12,6 +12,8 @@ export const useArduinoSerial = () => {
     const [stress, setStress] = useState<SerialData['stress']>('LOW');
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [rawData, setRawData] = useState<string[]>([]);
+    const [baudRate, setBaudRate] = useState(9600);
 
     const portRef = useRef<any>(null);
     const readerRef = useRef<any>(null);
@@ -45,9 +47,11 @@ export const useArduinoSerial = () => {
         setWeight(null);
         setStatus('SAFE');
         setStress('LOW');
+        setRawData([]);
     }, []);
 
-    const connect = async () => {
+    const connect = async (overrideBaud?: number) => {
+        const targetBaud = overrideBaud || baudRate;
         if (!('serial' in navigator)) {
             const msg = 'Web Serial API is not supported in this browser. Please use Chrome or Edge.';
             setError(msg);
@@ -56,13 +60,13 @@ export const useArduinoSerial = () => {
         }
 
         if (isConnected) {
-            return; // Already connected
+            await disconnect();
         }
 
         try {
             const serial = (navigator as any).serial;
             const port = await serial.requestPort();
-            await port.open({ baudRate: 9600 });
+            await port.open({ baudRate: targetBaud });
             portRef.current = port;
             setIsConnected(true);
             setError(null);
@@ -102,18 +106,28 @@ export const useArduinoSerial = () => {
                         const trimmedLine = line.trim();
                         if (!trimmedLine) continue;
 
-                        // Parse weight: "Weight: 0.12 kg"
-                        if (trimmedLine.startsWith('Weight:')) {
-                            const match = trimmedLine.match(/Weight:\s*([\d.]+)\s*kg/i);
-                            if (match && match[1]) {
-                                const w = parseFloat(match[1]);
-                                setWeight(w);
-                                setStress(getStressLevel(w));
-                            }
+                        console.log("📥 Raw Serial Input:", trimmedLine);
+                        setRawData(prev => [trimmedLine, ...prev].slice(0, 10));
+
+                        // Flexible parsing: "Weight: 0.12 kg", "LOAD: 0.12", or just "0.12"
+                        let parsedWeight: number | null = null;
+                        
+                        if (trimmedLine.match(/Weight:\s*([\d.]+)/i)) {
+                            parsedWeight = parseFloat(trimmedLine.match(/Weight:\s*([\d.]+)/i)![1]);
+                        } else if (trimmedLine.match(/LOAD:\s*([\d.]+)/i)) {
+                            parsedWeight = parseFloat(trimmedLine.match(/LOAD:\s*([\d.]+)/i)![1]);
+                        } else if (trimmedLine.match(/^[\d.]+$/)) {
+                            parsedWeight = parseFloat(trimmedLine);
+                        }
+
+                        if (parsedWeight !== null && !isNaN(parsedWeight)) {
+                            setWeight(parsedWeight);
+                            setStress(getStressLevel(parsedWeight));
                         } 
+                        
                         // Parse status: "SAFE", "OVERLOAD", "WARNING", "TANGLE", "TEAR"
-                        else if (['SAFE', 'OVERLOAD', 'WARNING', 'TANGLE', 'TEAR'].includes(trimmedLine)) {
-                            setStatus(trimmedLine as SerialData['status']);
+                        if (['SAFE', 'OVERLOAD', 'WARNING', 'TANGLE', 'TEAR'].includes(trimmedLine.toUpperCase())) {
+                            setStatus(trimmedLine.toUpperCase() as SerialData['status']);
                         }
                     }
                 }
@@ -130,9 +144,8 @@ export const useArduinoSerial = () => {
     useEffect(() => {
         return () => {
             disconnect();
-            // Remove event listeners logic could go here, but disconnect() handles it cleanly enough.
         };
     }, [disconnect]);
 
-    return { weight, status, stress, isConnected, connect, disconnect, error };
+    return { weight, status, stress, isConnected, connect, disconnect, error, rawData, baudRate, setBaudRate };
 };

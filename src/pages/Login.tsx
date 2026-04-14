@@ -30,8 +30,8 @@ const Login: React.FC = () => {
     useEffect(() => {
         const checkConnection = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/fish`, { method: 'GET' }); // Simple public endpoint
-                if (response.ok || response.status === 404) { // 404 means server reached but route might be protected/wrong
+                const response = await fetch(`${API_BASE_URL}/ping`, { method: 'GET' }); 
+                if (response.ok) { 
                     setServerStatus('connected');
                 } else {
                     setServerStatus('disconnected');

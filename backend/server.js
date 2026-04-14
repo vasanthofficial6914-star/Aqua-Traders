@@ -74,6 +74,11 @@ app.use('/api/netdata', netDataRoutes);
 app.use('/api/hardware', hardwareRoutes);
 app.use('/api/services', serviceRoutes);
 
+// Simple ping endpoint for connection checks
+app.get('/api/ping', (req, res) => {
+    res.json({ success: true, message: 'FisherDirect Backend Active', timestamp: new Date() });
+});
+
 // 404 Handler for API routes (Return JSON instead of HTML)
 app.use('/api', (req, res) => {
     res.status(404).json({ success: false, message: `API Route Not Found: ${req.originalUrl}` });
