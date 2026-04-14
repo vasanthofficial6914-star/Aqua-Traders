@@ -2,12 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser } from '../services/authService';
+import API_BASE_URL from '../config/api';
+
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [serverStatus, setServerStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+    const [retryCount, setRetryCount] = useState(0);
+
 
     const { login, role, isAuthenticated } = useAuth();
     const navigate = useNavigate();
@@ -20,23 +25,49 @@ const Login: React.FC = () => {
             else if (role === 'admin') navigate('/admindashboard');
         }
     }, [isAuthenticated, role, navigate]);
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
 
+    // Check server connection status
+    useEffect(() => {
+        const checkConnection = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/fish`, { method: 'GET' }); // Simple public endpoint
+                if (response.ok || response.status === 404) { // 404 means server reached but route might be protected/wrong
+                    setServerStatus('connected');
+                } else {
+                    setServerStatus('disconnected');
+                }
+            } catch (err) {
+                console.error("Server connection failed:", err);
+                setServerStatus('disconnected');
+            }
+        };
+
+        checkConnection();
+        const interval = setInterval(checkConnection, 30000); // Check every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent, isRetry = false) => {
+        if (e) e.preventDefault();
+        setError('');
+        
         if (!email || !password) {
             setError('Please fill in all fields');
             return;
         }
 
         setLoading(true);
+        if (isRetry) setRetryCount(prev => prev + 1);
+
         try {
+            console.log(`🔑 Attempting login (Attempt ${retryCount + 1})...`);
             const data = await loginUser({ email, password });
 
-            // Assuming data contains token and user body:
+            // Success!
+            alert("Login Successful! Welcome back.");
             login(data, data.token);
 
-            // Redirect based on role returned from DB
+            // Redirect based on role
             const userRole = data.role;
             if (userRole === 'buyer' || userRole === 'customer') {
                 navigate('/customerdashboard');
@@ -45,8 +76,18 @@ const Login: React.FC = () => {
             } else if (userRole === 'admin') {
                 navigate('/admindashboard');
             }
-        } catch (error) {
-            setError("Could not connect to the server. Please try again later.");
+        } catch (error: any) {
+            console.error("❌ Login error:", error);
+            
+            // Check for HTML response or JSON error
+            if (error.message.includes("Unexpected token") || error.message.includes("DOCTYPE")) {
+                setError("Server error: Received HTML instead of JSON. The backend might not be correctly configured or is returning a 404 page.");
+            } else if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+                setError("Could not connect to the server. Please ensure the backend (port 3001) is running.");
+                setServerStatus('disconnected');
+            } else {
+                setError(error.message || "Invalid credentials. Please check your email and password.");
+            }
         } finally {
             setLoading(false);
         }
@@ -62,7 +103,19 @@ const Login: React.FC = () => {
                     <div className="text-center mb-10">
                         <div className="text-4xl mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] inline-block animate-float">🌊</div>
                         <h1 className="text-3xl font-black text-white drop-shadow-md mb-2 tracking-tight">WELCOME TO மீனவன்</h1>
-                        <p className="text-sm font-bold text-white/50 uppercase tracking-widest">Sign in to your account</p>
+                        <p className="text-sm font-bold text-white/50 uppercase tracking-widest mb-4">Sign in to your account</p>
+                        
+                        {/* Server Status Indicator */}
+                        <div className="flex items-center justify-center gap-2 mb-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                                serverStatus === 'connected' ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 
+                                serverStatus === 'disconnected' ? 'bg-red-500 shadow-[0_0_10px_#ef4444]' : 
+                                'bg-yellow-500 animate-pulse'
+                            }`}></div>
+                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                                Server: {serverStatus === 'connected' ? 'Connected' : serverStatus === 'disconnected' ? 'Disconnected' : 'Checking...'}
+                            </span>
+                        </div>
                     </div>
 
                     {error && (
@@ -99,15 +152,25 @@ const Login: React.FC = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="btn-neon-solid w-full mt-4 !py-4 uppercase tracking-widest text-sm"
+                            className={`btn-neon-solid w-full mt-4 !py-4 uppercase tracking-widest text-sm ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {loading ? (
                                 <span className="flex items-center justify-center gap-2">
                                     <span className="w-4 h-4 rounded-full border-2 border-ocean-900 border-t-transparent animate-spin"></span>
-                                    AUTHENTICATING...
+                                    {retryCount > 0 ? `RETRYING (${retryCount})...` : 'AUTHENTICATING...'}
                                 </span>
                             ) : 'LOGIN SECURELY'}
                         </button>
+
+                        {error && serverStatus === 'disconnected' && (
+                            <button
+                                type="button"
+                                onClick={(e) => handleSubmit(e as any, true)}
+                                className="text-[10px] text-neon-400 hover:text-white mt-2 transition-colors uppercase font-bold tracking-widest"
+                            >
+                                🔄 Try Reconnecting to Server
+                            </button>
+                        )}
 
                         <div className="mt-8 text-center text-xs font-bold text-white/50 tracking-widest uppercase">
                             New to மீனவன்?{' '}

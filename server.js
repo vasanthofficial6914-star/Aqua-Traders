@@ -160,7 +160,11 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-const PORT = 3001;
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, message: `API Route Not Found on this server: ${req.originalUrl}` });
+});
+
+const PORT = 3002;
 const server = app.listen(PORT, () => {
     console.log('---------------------------------------------');
     console.log(`🚀 ALERT SERVER ACTIVE`);

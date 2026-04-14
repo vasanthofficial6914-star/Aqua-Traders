@@ -13,6 +13,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import netDataRoutes from './routes/netDataRoutes.js';
 import hardwareRoutes from './routes/hardwareRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
+import { loginUser } from './controllers/authController.js';
+
 
 // Connect to DB
 connectDB();
@@ -37,20 +39,45 @@ app.use(cors({
     origin: [
         "http://localhost:5173",
         "https://fisher-man.vercel.app",
-        "https://fisher-m53n2maga-haswin-singhs-projects.vercel.app"
+        "https://fisher-m53n2maga-haswin-singhs-projects.vercel.app",
+        "http://127.0.0.1:5173"
     ],
     credentials: true
 }));
 app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 app.use('/uploads', express.static('uploads'));
 
 // API Routes
 app.use('/api/auth', authRoutes);
+
+// Helper for Login response
+app.post('/api/login', async (req, res) => {
+    try {
+        console.log('Login request received for:', req.body.email);
+        // We reuse the controller logic or call it directly
+        await loginUser(req, res);
+    } catch (err) {
+        console.error('Login Route Error:', err);
+        res.status(500).json({ success: false, message: 'Server Internal Error' });
+    }
+});
+
 app.use('/api/fish', fishRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/netdata', netDataRoutes);
 app.use('/api/hardware', hardwareRoutes);
 app.use('/api/services', serviceRoutes);
+
+// 404 Handler for API routes (Return JSON instead of HTML)
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, message: `API Route Not Found: ${req.originalUrl}` });
+});
 
 
 // Error Handling Middleware for Unmatched Routes
